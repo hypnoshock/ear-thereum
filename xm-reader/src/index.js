@@ -2,6 +2,10 @@ const fs = require("fs");
 var sanitize = require("sanitize-filename");
 const FasttrackerXmModule = require("./types/FasttrackerXmModule");
 const KaitaiStream = require('kaitai-struct/KaitaiStream');
+// const lzwcompress = require('lzwcompress');
+// const oggEncoder = require("vorbis-encoder-js").encoder;
+const pako = require('pako');
+
 
 const arrayBuffer = fs.readFileSync("./mods/luumukii.xm");
 const data = new FasttrackerXmModule(new KaitaiStream(arrayBuffer));
@@ -13,12 +17,26 @@ const moduleName = sanitize(data.preheader.moduleName.trim()) || "unknown";
 data.instruments.forEach( (inst, instIdx) => {
     const instName = sanitize(inst.header.name.trim()) || instIdx;
     inst.samples.forEach( (smp, smpIdx) => {
-        const smpData = deltasToSamples(smp.data);
+        const smpDeltas = smp.data;
+        const smpData = deltasToSamples(smpDeltas);
         const smpName = sanitize(smp.header.name.trim()) || smpIdx;
         const bitRate = smp.header.type.isSampleData16Bit ? 16 : 8;
+        fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt`, smpDeltas);
         fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.raw`, smpData);
+        
+        const deflator = new pako.Deflate();
+        deflator.push(smpDeltas, true) // What are flush modes? 0..6 Z_NO_FLUSH..Z_TREE. false = Z_NO_FLUSH, true = Z_FINISH
+
+        fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt.deflate`, deflator.result);
+
+        const inflated = pako.inflate(deflator.result);
+        fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt.inflate`, inflated);
     });
 })
+
+function compress(data) {
+    return lzwcompress.pack(data);
+}
 
 function deltasToSamples(deltas) {
     var samples = Buffer.alloc(deltas.length);

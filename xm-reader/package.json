@@ -11,6 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "kaitai-struct": "^0.10.0",
-    "sanitize-filename": "^1.6.3"
+    "pako": "^2.1.0",
+    "sanitize-filename": "^1.6.3",
+    "vorbis-encoder-js": "^1.0.2"
   }
 }
