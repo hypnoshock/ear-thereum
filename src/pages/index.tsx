@@ -7,8 +7,8 @@ export default function HomePage() {
     return (
         <div>
             <Head>
-                <title>NextJS Boilerplate: Homepage</title>
-                <meta property="og:title" content="NextJS Boilerplate: Homepage" key="title" />
+                <title>Ear-thereum</title>
+                <meta property="og:title" content="Ear-thereum" key="title" />
             </Head>
             <Home />
         </div>
