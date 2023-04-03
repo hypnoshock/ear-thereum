@@ -1,0 +1,16 @@
+{
+  "name": "xm_reader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "gen:types": "ksc -t javascript --outdir src/types src/types/fasttracker_xm_module.ksy"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "kaitai-struct": "^0.10.0",
+    "sanitize-filename": "^1.6.3"
+  }
+}

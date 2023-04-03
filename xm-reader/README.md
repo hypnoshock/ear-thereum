@@ -1,0 +1,1 @@
+A small project that extracts sample data from XM files. Used as an experiment in using *Kaitai structs* which is a domain specific language used to describe binary file structures and output the struct in a target language which in this case is javascript. Unfortunately no TypeScript yet! :-(
