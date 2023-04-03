@@ -18,19 +18,12 @@ data.instruments.forEach( (inst, instIdx) => {
     const instName = sanitize(inst.header.name.trim()) || instIdx;
     inst.samples.forEach( (smp, smpIdx) => {
         const smpDeltas = smp.data;
-        const smpData = deltasToSamples(smpDeltas);
         const smpName = sanitize(smp.header.name.trim()) || smpIdx;
         const bitRate = smp.header.type.isSampleData16Bit ? 16 : 8;
-        fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt`, smpDeltas);
-        fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.raw`, smpData);
-        
+
         const deflator = new pako.Deflate();
-        deflator.push(smpDeltas, true) // What are flush modes? 0..6 Z_NO_FLUSH..Z_TREE. false = Z_NO_FLUSH, true = Z_FINISH
-
+        deflator.push(smpDeltas, true) 
         fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt.deflate`, deflator.result);
-
-        const inflated = pako.inflate(deflator.result);
-        fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt.inflate`, inflated);
     });
 })
 

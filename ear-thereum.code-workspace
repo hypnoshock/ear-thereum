@@ -1,0 +1,35 @@
+{
+  "folders": [
+    {
+      "path": "frontend"
+    },
+    {
+      "path": "xm-reader"
+    },
+    {
+      "path": "contracts"
+    }
+  ],
+  "settings": {
+    "workbench.colorCustomizations": {
+      "activityBar.activeBackground": "#4e329f",
+      "activityBar.background": "#4e329f",
+      "activityBar.foreground": "#e7e7e7",
+      "activityBar.inactiveForeground": "#e7e7e799",
+      "activityBarBadge.background": "#180c08",
+      "activityBarBadge.foreground": "#e7e7e7",
+      "commandCenter.border": "#e7e7e799",
+      "sash.hoverBorder": "#4e329f",
+      "statusBar.background": "#3b2678",
+      "statusBar.foreground": "#e7e7e7",
+      "statusBarItem.hoverBackground": "#4e329f",
+      "statusBarItem.remoteBackground": "#3b2678",
+      "statusBarItem.remoteForeground": "#e7e7e7",
+      "titleBar.activeBackground": "#3b2678",
+      "titleBar.activeForeground": "#e7e7e7",
+      "titleBar.inactiveBackground": "#3b267899",
+      "titleBar.inactiveForeground": "#e7e7e799"
+    },
+    "peacock.color": "#3b2678"
+  }
+}
