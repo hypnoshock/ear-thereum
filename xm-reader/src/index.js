@@ -5,13 +5,16 @@ const KaitaiStream = require('kaitai-struct/KaitaiStream');
 // const lzwcompress = require('lzwcompress');
 // const oggEncoder = require("vorbis-encoder-js").encoder;
 const pako = require('pako');
+const { ethers } = require("ethers");
 
-
-const arrayBuffer = fs.readFileSync("./mods/luumukii.xm");
-const data = new FasttrackerXmModule(new KaitaiStream(arrayBuffer));
+const xmBytes = fs.readFileSync("./mods/luumukii.xm");
+const data = new FasttrackerXmModule(new KaitaiStream(xmBytes));
 
 const moduleName = sanitize(data.preheader.moduleName.trim()) || "unknown";
 // const sampleDeltas = data.instruments[0].samples[0].data;
+
+const sampleIds = [];
+const unpackedSamples = {}; 
 
 // Each instrument contains multiple samples
 data.instruments.forEach( (inst, instIdx) => {
@@ -21,14 +24,115 @@ data.instruments.forEach( (inst, instIdx) => {
         const smpName = sanitize(smp.header.name.trim()) || smpIdx;
         const bitRate = smp.header.type.isSampleData16Bit ? 16 : 8;
 
+        // pack
         const deflator = new pako.Deflate();
         deflator.push(smpDeltas, true) 
-        fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt.deflate`, deflator.result);
-    });
-})
 
-function compress(data) {
-    return lzwcompress.pack(data);
+        const id = ethers.keccak256(deflator.result).slice(2,6); // keccak includes 0x prefix
+        sampleIds.push(id);
+
+        fs.writeFileSync(`./out/${id}.deflate`, deflator.result);
+
+        // Unpack
+        const inflator = new pako.Inflate();
+        inflator.push(deflator.result);
+        const unpackedSample = inflator.result;
+        unpackedSamples[id] = unpackedSample
+
+        // fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt.deflate`, deflator.result);
+    });
+});
+
+writeXM(xmBytes)
+function writeXM(xmBytes) {
+    const headerSize = xmBytes.readInt32LE(60);
+    
+    // -- HEADER
+
+    // The header consists of a sub header and an extended header
+    // The extended header is designed to be of variable length and starts at offset 60 (includes size variable)
+    const header = xmBytes.slice(0, 60 + headerSize);
+    const numChan = header.readInt16LE(68);
+    const numPat = header.readInt16LE(70);
+    const numInst = header.readInt16LE(72);
+
+    // console.log('numChan: ', numChan);
+    // console.log('numPat: ', numPat);
+    // console.log('numInst: ', numInst);
+
+    let currentReadOffset = 60 + headerSize;
+
+    // -- PATTERNS
+    const patterns = []; // contains headers and the pattern data
+    for (let i = 0; i < numPat; i++) {
+        const patHeaderLen = xmBytes.readInt16LE(currentReadOffset);
+        const patHeader = xmBytes.slice(currentReadOffset, currentReadOffset + patHeaderLen);
+
+        patterns.push(patHeader);
+
+        const patDataSize = patHeader.readInt16LE(7);
+        if (patDataSize == 0) {
+            throw('Pattern data size is zero');
+        }
+        const patData = xmBytes.slice(currentReadOffset + patHeaderLen, currentReadOffset + patHeaderLen + patDataSize);
+        patterns.push(patData);
+
+        // patDataSize is variable
+        currentReadOffset += patHeaderLen + patDataSize;
+    }
+
+    // -- INSTRUMENTS
+    let sampleNum = 0; // because we aren't reading IDs yet
+    const instruments = [] 
+    for (let i = 0; i < numInst; i++) {
+        // Instrument header part 1
+        const instHeaderSize = xmBytes.readInt32LE(currentReadOffset); // Is the size of both parts of the header
+        const instHeader = xmBytes.slice(currentReadOffset, currentReadOffset + instHeaderSize);
+        instruments.push(instHeader);
+        currentReadOffset += instHeaderSize;       
+
+        const instName = instHeader.slice(4, 4 + 22); // If I split intruments away from tune ID might be stored here
+        console.log("instName: ", instName.toString());
+        const numSamples = instHeader.readInt16LE(27);
+        
+        if (numSamples > 0) {
+            // Instrument header part 2
+            const smpHeaderSize = instHeader.readInt32LE(29);
+            console.log("smpHeaderSize: ", smpHeaderSize);
+            
+            const sampleLengths = [];
+
+            // Sample headers
+            for (let j = 0; j < numSamples; j++) {
+                const smpHeader = xmBytes.slice(currentReadOffset, currentReadOffset + smpHeaderSize);
+                const smpName = smpHeader.slice(18, 18 + 22); // Used for ID lookup
+                const smpLen = smpHeader.readInt32LE(0);
+                sampleLengths.push(smpLen);
+
+                console.log('smpName: ', smpName.toString(), 'smpLen: ', smpLen);
+                instruments.push(smpHeader);
+                currentReadOffset += smpHeaderSize;
+            }
+
+            // Sample data
+            for (let j = 0; j < numSamples; j++) {
+                // Sample data where we spit out the data we retrieved from the chain
+                const smpData = unpackedSamples[sampleIds[sampleNum]];
+                instruments.push(smpData);
+                sampleNum++;
+                
+                // Read 4 byte ID
+                currentReadOffset += sampleLengths[j]; // When restoring from blockchain we only inc 4 bytes for the IDs
+            }
+        }
+
+    }
+
+    // -- WRITE FILE
+    const patternDataLen = patterns.reduce((acc, elm) => acc + elm.length, 0);
+    const xmFileLen = header.length + patternDataLen;
+    const xmFile = Buffer.concat([header, ...patterns, ...instruments]);
+    fs.writeFileSync(`./out/_processed.xm`, xmFile);
 }
 
 function deltasToSamples(deltas) {

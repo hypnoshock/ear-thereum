@@ -22,6 +22,7 @@ contract EarThereumTest is Test {
 
         bytes4 id = "ABCD";
         bytes memory sampleData = et.getSampleData(id);
-        console.log("sampleData.length: ", sampleData.length);
+
+        assertGt(sampleData.length, 0);
     }
 }

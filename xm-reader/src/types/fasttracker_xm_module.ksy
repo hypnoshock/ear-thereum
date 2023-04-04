@@ -100,7 +100,7 @@ types:
         doc: "max 256"
         repeat: expr
         repeat-expr: song_length
-        #repeat-expr: 256
+        #repeat-expr: 256 # https://www.celersms.com/doc/XM_file_format.pdf says it's fixed length but my test XMs didn't work unless I used song_length
   flags:
     seq:
       - id: reserved

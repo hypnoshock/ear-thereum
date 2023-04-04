@@ -8,6 +8,9 @@
     },
     {
       "path": "contracts"
+    },
+    {
+      "path": "../../../Documents/ear-thereum-notes"
     }
   ],
   "settings": {
