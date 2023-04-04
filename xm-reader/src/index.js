@@ -1,50 +1,244 @@
 const fs = require("fs");
-var sanitize = require("sanitize-filename");
-const FasttrackerXmModule = require("./types/FasttrackerXmModule");
-const KaitaiStream = require('kaitai-struct/KaitaiStream');
-// const lzwcompress = require('lzwcompress');
-// const oggEncoder = require("vorbis-encoder-js").encoder;
 const pako = require('pako');
 const { ethers } = require("ethers");
 
+const ID_LEN = 4; // bytes
+
 const xmBytes = fs.readFileSync("./mods/luumukii.xm");
-const data = new FasttrackerXmModule(new KaitaiStream(xmBytes));
 
-const moduleName = sanitize(data.preheader.moduleName.trim()) || "unknown";
-// const sampleDeltas = data.instruments[0].samples[0].data;
+/*
+ * Separates the sample data from the XM putting IDs in place of the data for lookup
+ */
+function stripXM(xmBytes) {
+    console.log("Stripping XM file. Size: ", xmBytes.length);
+    console.log(xmBytes);
+    
+    const headerSize = xmBytes.readInt32LE(60);
+    
+    // -- HEADER
 
-const sampleIds = [];
-const unpackedSamples = {}; 
+    // The header consists of a sub header and an extended header
+    // The extended header is designed to be of variable length and starts at offset 60 (includes size variable)
+    const header = xmBytes.slice(0, 60 + headerSize);
+    const numChan = header.readInt16LE(68);
+    const numPat = header.readInt16LE(70);
+    const numInst = header.readInt16LE(72);
 
-// Each instrument contains multiple samples
-data.instruments.forEach( (inst, instIdx) => {
-    const instName = sanitize(inst.header.name.trim()) || instIdx;
-    inst.samples.forEach( (smp, smpIdx) => {
-        const smpDeltas = smp.data;
-        const smpName = sanitize(smp.header.name.trim()) || smpIdx;
-        const bitRate = smp.header.type.isSampleData16Bit ? 16 : 8;
+    console.log('numChan: ', numChan);
+    console.log('numPat: ', numPat);
+    console.log('numInst: ', numInst);
 
-        // pack
+    let currentReadOffset = 60 + headerSize;
+
+    // -- PATTERNS
+    const patterns = []; // contains headers and the pattern data
+    for (let i = 0; i < numPat; i++) {
+        const patHeaderLen = xmBytes.readInt16LE(currentReadOffset);
+        const patHeader = xmBytes.slice(currentReadOffset, currentReadOffset + patHeaderLen);
+
+        patterns.push(patHeader);
+
+        const patDataSize = patHeader.readInt16LE(7);
+        if (patDataSize == 0) {
+            throw('Pattern data size is zero');
+        }
+        const patData = xmBytes.slice(currentReadOffset + patHeaderLen, currentReadOffset + patHeaderLen + patDataSize);
+        patterns.push(patData);
+
+        // patDataSize is variable
+        currentReadOffset += patHeaderLen + patDataSize;
+    }
+
+    // -- INSTRUMENTS
+    const instrumentOffset = currentReadOffset;
+    const instruments = [];
+    const samples = [];
+    for (let i = 0; i < numInst; i++) {
+        // Instrument header part 1
+        const instHeaderSize = xmBytes.readInt32LE(currentReadOffset); // Is the size of both parts of the header
+        const instHeader = xmBytes.slice(currentReadOffset, currentReadOffset + instHeaderSize);
+        instruments.push(instHeader);
+        currentReadOffset += instHeaderSize;       
+
+        const instName = instHeader.slice(4, 4 + 22); // If I split intruments away from tune ID might be stored here
+        // console.log("instName: ", instName.toString());
+        const numSamples = instHeader.readInt16LE(27);
+        
+        if (numSamples > 0) {
+            // Instrument header part 2
+            const smpHeaderSize = instHeader.readInt32LE(29);
+            const sampleLengths = [];
+
+            // Sample headers
+            for (let j = 0; j < numSamples; j++) {
+                const smpHeader = xmBytes.slice(currentReadOffset, currentReadOffset + smpHeaderSize);
+                // const smpName = smpHeader.slice(18, 18 + 22); // Used for ID lookup
+                const smpLen = smpHeader.readInt32LE(0);
+                sampleLengths.push(smpLen);
+                instruments.push(smpHeader);
+                currentReadOffset += smpHeaderSize;
+            }
+
+            // Sample data
+            for (let j = 0; j < numSamples; j++) {
+                const smpLen = sampleLengths[j];
+                if (smpLen > 0) {
+                    const smpDeltas = xmBytes.slice(currentReadOffset, currentReadOffset + smpLen);
+                    samples.push(smpDeltas);
+
+                    currentReadOffset += smpLen; // When restoring from blockchain we only inc 4 bytes for the IDs
+                }   
+            }
+        }
+    }
+
+    // NOTE: Sample headers are still in the module
+    const strippedXM = Buffer.concat([header, ...patterns, ...instruments]);
+
+    return {strippedXM, instrumentOffset, samples};
+}
+
+/**
+ * WARNING: Mutates the buffer directly
+ * Sets the sample name on each of the samples to the keccak hash so they can be referenced later
+ */
+function setSampleIDsInXM(xmBytes, sampleIDs) {
+    console.log("Setting sample names to IDs");
+    
+    const headerSize = xmBytes.readInt32LE(60);
+    
+    // -- HEADER
+
+    // The header consists of a sub header and an extended header
+    // The extended header is designed to be of variable length and starts at offset 60 (includes size variable)
+    const header = xmBytes.slice(0, 60 + headerSize);
+    const numChan = header.readInt16LE(68);
+    const numPat = header.readInt16LE(70);
+    const numInst = header.readInt16LE(72);
+
+    let currentReadOffset = 60 + headerSize;
+
+    // -- PATTERNS
+    for (let i = 0; i < numPat; i++) {
+        const patHeaderLen = xmBytes.readInt16LE(currentReadOffset);
+        const patHeader = xmBytes.slice(currentReadOffset, currentReadOffset + patHeaderLen);
+
+        const patDataSize = patHeader.readInt16LE(7);
+        if (patDataSize == 0) {
+            throw('Pattern data size is zero');
+        }
+        currentReadOffset += patHeaderLen + patDataSize;
+    }
+
+    // -- INSTRUMENTS
+    let sampleNum = 0;
+    for (let i = 0; i < numInst; i++) {
+        // Instrument header part 1
+        const instHeaderSize = xmBytes.readInt32LE(currentReadOffset); // Is the size of both parts of the header
+        const instHeader = xmBytes.slice(currentReadOffset, currentReadOffset + instHeaderSize);
+        currentReadOffset += instHeaderSize;       
+
+        // If I split intruments away from tune, ID might be stored here
+        // const instName = instHeader.slice(4, 4 + 22); 
+
+        const numSamples = instHeader.readInt16LE(27);        
+        if (numSamples > 0) {
+            // Instrument header part 2
+            const smpHeaderSize = instHeader.readInt32LE(29);
+
+            // Sample headers
+            for (let j = 0; j < numSamples; j++) {
+                const nameOffset = currentReadOffset + 18;
+                const nameLen = 22;
+                const smpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
+                // console.log("old name: ", smpName.toString());
+
+                // We are storing the ID as hex string not as bytes. Idea being keep the names human readable for now
+                const idStrBytes = Buffer.from(sampleIDs[sampleNum], 'ascii');
+
+                for (let k = 0; k < nameLen; k++) {
+                    xmBytes[nameOffset + k] = k < idStrBytes.length ? idStrBytes[k] : 0
+                }
+
+                const newSmpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
+                console.log(`${sampleNum} name: `, newSmpName.toString());
+
+                currentReadOffset += smpHeaderSize;
+                
+                sampleNum++; // Gobal counter so not j
+            }
+
+        }
+    }
+}
+
+/*
+ * Uses DEFLATE to compress samples. IDs are 4 byte keccak of compressed data
+ */
+function compressSamples(samples) {
+    const compressedSmpsDict = {};
+    const sampleIDs = [];
+    
+    for (let i = 0; i < samples.length; i++) {
+        const smpDeltas = samples[i];
         const deflator = new pako.Deflate();
         deflator.push(smpDeltas, true) 
 
-        const id = ethers.keccak256(deflator.result).slice(2,6); // keccak includes 0x prefix
-        sampleIds.push(id);
+        // 4 bytes of the keccak. NOTE: keccak string includes 0x prefix
+        const id = ethers.keccak256(deflator.result).slice(2, 2 + (ID_LEN * 2)); 
+        sampleIDs.push(id);
+        compressedSmpsDict[id] = deflator.result;
+    }
 
-        fs.writeFileSync(`./out/${id}.deflate`, deflator.result);
+    return { compressedSmpsDict, sampleIDs };
+}
 
-        // Unpack
+function decompressSamples(compressedSmpsDict) {
+    const smpsDict = {};
+
+    for (let id in compressedSmpsDict) {
         const inflator = new pako.Inflate();
-        inflator.push(deflator.result);
-        const unpackedSample = inflator.result;
-        unpackedSamples[id] = unpackedSample
+        inflator.push(compressedSmpsDict[id], true);
 
-        // fs.writeFileSync(`./out/${moduleName}_sample_${instIdx}_${instName}_${smpName}_${bitRate}bit.dlt.deflate`, deflator.result);
-    });
-});
+        smpsDict[id] = inflator.result; // use Buffer.from?
 
-writeXM(xmBytes)
-function writeXM(xmBytes) {
+        // console.log(`compressedSmpsDict[id].length: ${compressedSmpsDict[id].length}`);
+        console.log(`${id}: ${inflator.result.length}`);
+    }
+
+    return smpsDict;
+}
+
+/*
+ * Uses DEFLATE to compress
+ */
+function compressXM(xmBytes) {
+    const deflator = new pako.Deflate();
+    deflator.push(xmBytes, true) 
+    return deflator.result;
+}
+
+/*
+ * Uses INFLATE
+ */
+function decompressXM(xmBytes) {
+    const inflator = new pako.Inflate();
+    inflator.push(xmBytes, true)
+
+    return Buffer.from(inflator.result.buffer);
+}
+
+function writeSamples(compressedSamples) {
+    for (let id in compressedSamples) {
+        const sample = compressedSamples[id];
+        fs.writeFileSync(`./out/${id}.deflate`, sample);
+    }
+}
+
+// reconstructXM(xmBytes, samples);
+function reconstructXM(xmBytes, smpsDict) {
+    console.log("Recontructing XM file");
+    console.log(xmBytes);
     const headerSize = xmBytes.readInt32LE(60);
     
     // -- HEADER
@@ -82,7 +276,6 @@ function writeXM(xmBytes) {
     }
 
     // -- INSTRUMENTS
-    let sampleNum = 0; // because we aren't reading IDs yet
     const instruments = [] 
     for (let i = 0; i < numInst; i++) {
         // Instrument header part 1
@@ -98,18 +291,18 @@ function writeXM(xmBytes) {
         if (numSamples > 0) {
             // Instrument header part 2
             const smpHeaderSize = instHeader.readInt32LE(29);
-            console.log("smpHeaderSize: ", smpHeaderSize);
-            
             const sampleLengths = [];
+            const sampleIDs = [];
 
             // Sample headers
             for (let j = 0; j < numSamples; j++) {
                 const smpHeader = xmBytes.slice(currentReadOffset, currentReadOffset + smpHeaderSize);
-                const smpName = smpHeader.slice(18, 18 + 22); // Used for ID lookup
+                const smpName = smpHeader.slice(18, 18 + (ID_LEN * 2)); // Used for ID lookup. NOTE: because it's a hex string it's bytes * 2
                 const smpLen = smpHeader.readInt32LE(0);
+                const smpID = smpName.toString();
                 sampleLengths.push(smpLen);
+                sampleIDs.push(smpID);
 
-                console.log('smpName: ', smpName.toString(), 'smpLen: ', smpLen);
                 instruments.push(smpHeader);
                 currentReadOffset += smpHeaderSize;
             }
@@ -117,22 +310,28 @@ function writeXM(xmBytes) {
             // Sample data
             for (let j = 0; j < numSamples; j++) {
                 // Sample data where we spit out the data we retrieved from the chain
-                const smpData = unpackedSamples[sampleIds[sampleNum]];
+                const id = sampleIDs[j];
+                const smpData = smpsDict[id];
+                if (smpData == undefined) {
+                    throw(`sample data empty for sample ${j} ID: '${id}'`);
+                }
+
+                if (smpData.length != sampleLengths[j]) {
+                    console.warn(`Sample ${j} length mismatch. ID: ${sampleIDs[j]}`);
+                }
+
                 instruments.push(smpData);
-                sampleNum++;
                 
-                // Read 4 byte ID
-                currentReadOffset += sampleLengths[j]; // When restoring from blockchain we only inc 4 bytes for the IDs
+                // NOTE: We are storing the IDs in the sample names instead of where the sample data 
+                // was so no need to increment as we are already pointing at the next header
+                // currentReadOffset += ID_LEN; 
             }
         }
 
     }
 
-    // -- WRITE FILE
-    const patternDataLen = patterns.reduce((acc, elm) => acc + elm.length, 0);
-    const xmFileLen = header.length + patternDataLen;
-    const xmFile = Buffer.concat([header, ...patterns, ...instruments]);
-    fs.writeFileSync(`./out/_processed.xm`, xmFile);
+    const reconstructedXMBytes = Buffer.concat([header, ...patterns, ...instruments]);
+    return reconstructedXMBytes;
 }
 
 function deltasToSamples(deltas) {
@@ -146,29 +345,25 @@ function deltasToSamples(deltas) {
     return samples;
 }
 
-// old=0;
-// for i=1 to len
-//    new=sample[i]+old;
-//    sample[i]=new;
-//    old=new;
+// --------- //
 
+const {strippedXM, samples} = stripXM(xmBytes);
+console.log("stripped XM size: ", strippedXM.length);
+console.log("sample data dize: ", samples.reduce( (acc, elm) => acc + elm.length, 0));
 
+const {compressedSmpsDict, sampleIDs} = compressSamples(samples);
+console.log("compressed sample data dize: ", sampleIDs.reduce( (acc, id) => acc + compressedSmpsDict[id].length, 0));
+// writeSamples(compressedSmpsDict);
 
-// My plan
+setSampleIDsInXM(strippedXM, sampleIDs);
 
-// Save out all the instrumes as one big blob called a 'instrumentPack'
-// Compress the pack with gzip or something ... something that I can unpack client side
-// Upload the instrument pack to a `SamplePacks` contract which has either a mapping or array of these data blobs
+const compressedXM = compressXM(strippedXM);
+console.log("compressed XM size: ", compressedXM.length);
 
-// Do something similar with a .xm file that is pretty much stripped of anything I don't care about
-// also gzipped
-
-// Client end will retrieve the .xm and the separate instrument pack and reconstruct the .xm file to be played
-
-// Thoughts:
-// Maybe I want to upload the instruments as separate gzipped files so they can be used separately and not in a pack?
-// For a demo it would be simpler just to use a big pack
-// But if I wanted to use more than one pack I'd still need a way of encoding that I am using more than one pack
-// My uploaded xm file needs to have a list of instrument IDs instead of data. Those IDs can be given to a contract and it'll give you all the data
-
-// Can I make a platform where people can upload their XMs and I become the Beatport of XM files?
+// -- Reconstruct
+const decompressedXM = decompressXM(compressedXM);
+// const fetchedSampleIDs = getSampleIDs(decompressedXM); // TODO: Fetch from XM file
+// const compressedSmpsDict = fetchSamples(fetchedSampleIDs); // TODO: Fetch from blockchain
+const decompressedSmpsDict = decompressSamples(compressedSmpsDict);
+const reconstructedXM = reconstructXM(decompressedXM, decompressedSmpsDict);
+fs.writeFileSync(`./out/reconstructed.xm`, reconstructedXM);
