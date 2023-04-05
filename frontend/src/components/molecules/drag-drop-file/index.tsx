@@ -8,6 +8,7 @@ import React from 'react';
 
 export interface DragDropFileProps extends ComponentProps {
     children?: ReactNode;
+    onFiles: (files: FileList) => void;
 }
 
 const StyledDragDropFile = styled('div')`
@@ -15,6 +16,7 @@ const StyledDragDropFile = styled('div')`
 `;
 
 export const DragDropFile: FunctionComponent<DragDropFileProps> = (props: DragDropFileProps) => {
+    const { onFiles } = props;
     const [dragActive, setDragActive] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -33,14 +35,14 @@ export const DragDropFile: FunctionComponent<DragDropFileProps> = (props: DragDr
         e.stopPropagation();
         setDragActive(false);
         if (e.dataTransfer && e.dataTransfer.files.length > 0) {
-            // handleFiles(e.dataTransfer.files);
+            onFiles(e.dataTransfer.files);
         }
     };
 
     const handleRefChange = function (e: ChangeEvent<HTMLInputElement>) {
         e.preventDefault();
         if (e.target && e.target.files && e.target.files.length > 0) {
-            // handleFiles(e.target.files);
+            onFiles(e.target.files);
         }
     };
 

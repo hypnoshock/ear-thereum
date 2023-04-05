@@ -9,9 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/pako": "^2.0.0",
     "change-case": "4.1.2",
-    "lzwcompress": "^1.1.0",
+    "ethers": "^6.2.3",
     "next": "12.1.6",
+    "pako": "^2.1.0",
     "polished": "4.2.2",
     "react": "18.1.0",
     "react-dom": "18.1.0",
