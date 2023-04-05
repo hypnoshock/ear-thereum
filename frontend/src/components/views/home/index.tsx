@@ -10,6 +10,7 @@ import {
     compressXM,
     decompressSamples,
     decompressXM,
+    getXMInfo,
     reconstructXM,
     setSampleIDsInXM,
     stripXM
@@ -49,35 +50,38 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
 
                 // -- Reconstruct
                 const decompressedXM = decompressXM(compressedXM);
-                // const fetchedSampleIDs = getSampleIDs(decompressedXM); // TODO: Fetch from XM file
-                // const compressedSmpsDict = fetchSamples(fetchedSampleIDs); // TODO: Fetch from blockchain
+
+                const { sampleIDs: fetchedSampleIDs } = getXMInfo(decompressedXM);
+                const fetchedSmpsDict = fetchSamples(fetchedSampleIDs); // TODO: Fetch from blockchain
                 const decompressedSmpsDict = decompressSamples(compressedSmpsDict);
                 const reconstructedXM = reconstructXM(decompressedXM, decompressedSmpsDict);
 
-                const blob = new Blob([reconstructedXM], { type: 'application/octet-stream' });
-
-                // Create a URL for the blob
-                const url = URL.createObjectURL(blob);
-
-                // Create a hidden anchor element with the download attribute set to the filename
-                const anchor = document.createElement('a');
-                anchor.style.display = 'none';
-                anchor.download = 'reconstructed.xm';
-                anchor.href = url;
-
-                // Add the anchor element to the document body
-                document.body.appendChild(anchor);
-
-                // Click on the anchor element to initiate the download
-                anchor.click();
-
-                // Remove the anchor element from the document body
-                document.body.removeChild(anchor);
-
-                // Release the URL object
-                URL.revokeObjectURL(url);
+                // downloadFile(reconstructedXM, 'reconstructed.xm');
             });
         }
+    };
+
+    // Fetch sample data from blockchain
+    const fetchSamples = (sampleIDs: string[]) => {
+        return null; // not implemented
+    };
+
+    // Better way of doing this?
+    const downloadFile = (data: Uint8Array, filename: string) => {
+        const blob = new Blob([data], { type: 'application/octet-stream' });
+
+        const url = URL.createObjectURL(blob);
+
+        // Create a hidden anchor element with the download attribute set to the filename
+        const anchor = document.createElement('a');
+        anchor.style.display = 'none';
+        anchor.download = filename;
+        anchor.href = url;
+
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
     };
 
     return (

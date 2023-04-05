@@ -258,10 +258,6 @@ export function reconstructXM(xmBytes: Uint8Array, smpsDict: SamplesDict): Uint8
     const numPat = new DataView(header.buffer, 70, 2).getInt16(0, true);
     const numInst = new DataView(header.buffer, 72, 2).getInt16(0, true);
 
-    // console.log('numChan: ', numChan);
-    // console.log('numPat: ', numPat);
-    // console.log('numInst: ', numInst);
-
     let currentReadOffset = 60 + headerSize;
 
     // -- PATTERNS
@@ -341,4 +337,64 @@ export function reconstructXM(xmBytes: Uint8Array, smpsDict: SamplesDict): Uint8
 
     const reconstructedXMBytes = Buffer.concat([header, ...patterns, ...instruments]);
     return reconstructedXMBytes;
+}
+
+export function getXMInfo(xmBytes: Uint8Array) {
+    // -- HEADER
+    const headerSize = new DataView(xmBytes.buffer, 60, 4).getInt32(0, true);
+    const header = new DataView(xmBytes.buffer, 0, 60 + headerSize);
+
+    const moduleName = new TextDecoder().decode(new DataView(xmBytes.buffer, 17, 20)).trim();
+    const numChan = header.getInt16(68, true);
+    const numPat = header.getInt16(70, true);
+    const numInst = header.getInt16(72, true);
+
+    let currentReadOffset = 60 + headerSize;
+
+    // -- PATTERNS
+    for (let i = 0; i < numPat; i++) {
+        const patHeaderLen = new DataView(xmBytes.buffer, currentReadOffset, 2).getInt16(0, true);
+        const patHeader = new DataView(xmBytes.buffer, currentReadOffset, patHeaderLen);
+        const patDataSize = patHeader.getInt16(7, true);
+
+        // patDataSize is variable hence looping through each to get to the instrument offset
+        currentReadOffset += patHeaderLen + patDataSize;
+    }
+
+    // -- INSTRUMENTS
+    const sampleLengths: number[] = [];
+    const sampleIDs: string[] = [];
+    for (let i = 0; i < numInst; i++) {
+        // Instrument header part 1
+        const instHeaderSize = new DataView(xmBytes.buffer, currentReadOffset, 4).getInt32(0, true); // Is the size of both parts of the header
+        const instHeader = new DataView(xmBytes.buffer, currentReadOffset, instHeaderSize);
+        currentReadOffset += instHeaderSize;
+
+        const instName = instHeader.buffer.slice(instHeader.byteOffset + 4, instHeader.byteOffset + 4 + 22);
+        console.log('instName: ', new TextDecoder().decode(instName));
+
+        const numSamples = instHeader.getInt16(27, true);
+        if (numSamples > 0) {
+            // Instrument header part 2
+            const smpHeaderSize = instHeader.getInt32(29, true);
+
+            // Sample headers
+            for (let j = 0; j < numSamples; j++) {
+                const smpHeader = new DataView(xmBytes.buffer, currentReadOffset, smpHeaderSize);
+                const smpLen = smpHeader.getInt32(0, true);
+                if (smpLen > 0) {
+                    const smpName = new DataView(smpHeader.buffer, smpHeader.byteOffset + 18, ID_LEN * 2);
+                    const smpID = new TextDecoder().decode(smpName);
+                    sampleLengths.push(smpLen);
+                    sampleIDs.push(smpID);
+                }
+
+                currentReadOffset += smpHeaderSize;
+            }
+
+            // No sample data so no need to increment offset
+        }
+    }
+
+    return { moduleName, numChan, numPat, numInst, sampleLengths, sampleIDs };
 }
