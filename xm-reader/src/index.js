@@ -82,12 +82,14 @@ function stripXM(xmBytes) {
             // Sample data
             for (let j = 0; j < numSamples; j++) {
                 const smpLen = sampleLengths[j];
+                console.log(`inst: ${i} smpLen: ${smpLen}`);
                 if (smpLen > 0) {
                     const smpDeltas = xmBytes.slice(currentReadOffset, currentReadOffset + smpLen);
                     samples.push(smpDeltas);
-
                     currentReadOffset += smpLen; // When restoring from blockchain we only inc 4 bytes for the IDs
-                }   
+                } else {
+                    console.log(`instrument: ${i} empty sample: ${j}`);
+                }
             }
         }
     }
@@ -103,7 +105,8 @@ function stripXM(xmBytes) {
  * Sets the sample name on each of the samples to the keccak hash so they can be referenced later
  */
 function setSampleIDsInXM(xmBytes, sampleIDs) {
-    console.log("Setting sample names to IDs");
+    console.log("Setting sample names to IDs. sameleIDs.length: ", sampleIDs.length);
+    // console.log(sampleIDs);
     
     const headerSize = xmBytes.readInt32LE(60);
     
@@ -122,8 +125,15 @@ function setSampleIDsInXM(xmBytes, sampleIDs) {
     for (let i = 0; i < numPat; i++) {
         const patHeaderLen = xmBytes.readInt16LE(currentReadOffset);
         const patHeader = xmBytes.slice(currentReadOffset, currentReadOffset + patHeaderLen);
-
+        
         const patDataSize = patHeader.readInt16LE(7);
+        console.log(
+            `patHeaderLen: ${patHeaderLen} patHeader.length: ${
+                patHeader.length
+            } patDataSize: ${patDataSize} currentReadOffset: ${currentReadOffset} next: ${
+                currentReadOffset + patHeaderLen + patDataSize
+            }`
+        );
         if (patDataSize == 0) {
             throw('Pattern data size is zero');
         }
@@ -132,7 +142,7 @@ function setSampleIDsInXM(xmBytes, sampleIDs) {
 
     // -- INSTRUMENTS
     let sampleNum = 0;
-    for (let i = 0; i < numInst; i++) {
+    for (let i = 0; i < numInst; i++) {        
         // Instrument header part 1
         const instHeaderSize = xmBytes.readInt32LE(currentReadOffset); // Is the size of both parts of the header
         const instHeader = xmBytes.slice(currentReadOffset, currentReadOffset + instHeaderSize);
@@ -148,24 +158,29 @@ function setSampleIDsInXM(xmBytes, sampleIDs) {
 
             // Sample headers
             for (let j = 0; j < numSamples; j++) {
-                const nameOffset = currentReadOffset + 18;
-                const nameLen = 22;
-                const smpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
-                // console.log("old name: ", smpName.toString());
+                const smpLen = xmBytes.readInt32LE(currentReadOffset);
 
-                // We are storing the ID as hex string not as bytes. Idea being keep the names human readable for now
-                const idStrBytes = Buffer.from(sampleIDs[sampleNum], 'ascii');
-
-                for (let k = 0; k < nameLen; k++) {
-                    xmBytes[nameOffset + k] = k < idStrBytes.length ? idStrBytes[k] : 0
+                if (smpLen > 0) {
+                    const nameOffset = currentReadOffset + 18;
+                    const nameLen = 22;
+                    const smpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
+                    // console.log("old name: ", smpName.toString());
+    
+                    // We are storing the ID as hex string not as bytes. Idea being keep the names human readable for now
+                    const idStr = sampleIDs[sampleNum];
+                    const idStrBytes = Buffer.from(idStr, 'ascii');
+    
+                    for (let k = 0; k < nameLen; k++) {
+                        xmBytes[nameOffset + k] = k < idStrBytes.length ? idStrBytes[k] : 0
+                    }
+    
+                    const newSmpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
+                    console.log(`${sampleNum} name: `, newSmpName.toString());
+                    sampleNum++; // Gobal counter so not j
                 }
-
-                const newSmpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
-                console.log(`${sampleNum} name: `, newSmpName.toString());
 
                 currentReadOffset += smpHeaderSize;
                 
-                sampleNum++; // Gobal counter so not j
             }
 
         }
@@ -309,7 +324,8 @@ function reconstructXM(xmBytes, smpsDict) {
 
             // Sample data
             for (let j = 0; j < numSamples; j++) {
-                // Sample data where we spit out the data we retrieved from the chain
+                if (sampleLengths[j] == 0) continue;
+
                 const id = sampleIDs[j];
                 const smpData = smpsDict[id];
                 if (smpData == undefined) {
@@ -320,6 +336,7 @@ function reconstructXM(xmBytes, smpsDict) {
                     console.warn(`Sample ${j} length mismatch. ID: ${sampleIDs[j]}`);
                 }
 
+                // Reinject sample data
                 instruments.push(smpData);
                 
                 // NOTE: We are storing the IDs in the sample names instead of where the sample data 
