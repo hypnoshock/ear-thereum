@@ -15,6 +15,9 @@ import {
     setSampleIDsInXM,
     stripXM
 } from '@app/utils/xm-tools';
+import { useMetaMask } from 'metamask-react';
+import { useEarThereumContext } from '@app/contexts/ear-thereum-provider';
+
 export interface HomeProps extends ComponentProps {
     children?: ReactNode;
 }
@@ -25,6 +28,9 @@ const StyledHome = styled('div')`
 
 export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
     const { children, ...otherProps } = props;
+    const { status, connect, account, chainId } = useMetaMask();
+    const { incCount, count } = useEarThereumContext();
+    const chainIdNum = chainId ? parseInt(chainId, 16) : -1;
 
     const onFiles = (files: FileList) => {
         if (files.length > 0) {
@@ -84,10 +90,25 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
         URL.revokeObjectURL(url);
     };
 
+    const handleConnectClick = () => {
+        connect();
+    };
+
+    const handleIncCounterClick = () => {
+        incCount();
+    };
+
     return (
         <StyledHome {...otherProps}>
             <h1>Ear-thereum</h1>
             <DragDropFile onFiles={onFiles} />
+            <button onClick={handleConnectClick}>Connect</button>
+            {account && <p>Account: {account}</p>}
+            {chainId && <p>Chain: {parseInt(chainId, 16)}</p>}
+            {<p>Counter: {count}</p>}
+            {chainIdNum == 31337 && status == 'connected' && (
+                <button onClick={handleIncCounterClick}>inc counter</button>
+            )}
         </StyledHome>
     );
 };

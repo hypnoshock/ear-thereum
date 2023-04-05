@@ -3,6 +3,8 @@
 import { Fragment } from 'react';
 import Head from 'next/head';
 import { GlobalStyles } from '@app/styles/global.styles';
+import { MetaMaskProvider } from 'metamask-react';
+import { EarThereumProvider } from '@app/contexts/ear-thereum-provider';
 
 function App({ Component, pageProps }: any) {
     return (
@@ -13,7 +15,11 @@ function App({ Component, pageProps }: any) {
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <GlobalStyles />
-            <Component {...pageProps} />
+            <MetaMaskProvider>
+                <EarThereumProvider>
+                    <Component {...pageProps} />
+                </EarThereumProvider>
+            </MetaMaskProvider>
         </Fragment>
     );
 }
