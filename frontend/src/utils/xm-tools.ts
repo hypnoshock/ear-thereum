@@ -113,7 +113,8 @@ export function compressSamples(samples: Uint8Array[]) {
         deflator.push(smpDeltas, true);
 
         // 4 bytes of the keccak. NOTE: keccak string includes 0x prefix
-        const id = ethers.keccak256(deflator.result).slice(2, 2 + ID_LEN * 2);
+        // const id = ethers.keccak256(deflator.result).slice(2, 2 + ID_LEN * 2); // v6
+        const id = ethers.utils.keccak256(deflator.result).slice(2, 2 + ID_LEN * 2);
         sampleIDs.push(id);
         compressedSmpsDict[id] = deflator.result;
     }
