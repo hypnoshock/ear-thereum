@@ -1,6 +1,6 @@
 /** @format */
 
-import { ethers } from 'ethers';
+import { ethers, keccak256 } from 'ethers';
 import pako from 'pako';
 
 export const ID_LEN = 4; // bytes
@@ -114,7 +114,7 @@ export function compressSamples(samples: Uint8Array[]) {
 
         // 4 bytes of the keccak. NOTE: keccak string includes 0x prefix
         // const id = ethers.keccak256(deflator.result).slice(2, 2 + ID_LEN * 2); // v6
-        const id = ethers.utils.keccak256(deflator.result).slice(2, 2 + ID_LEN * 2);
+        const id = keccak256(deflator.result).slice(2, 2 + ID_LEN * 2);
         sampleIDs.push(id);
         compressedSmpsDict[id] = deflator.result;
     }

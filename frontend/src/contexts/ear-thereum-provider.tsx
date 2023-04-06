@@ -1,7 +1,7 @@
 /** @format */
 
 import { EarThereum, EarThereum__factory } from '@app/services/contracts';
-import { ethers, Signer } from 'ethers';
+import { BrowserProvider, ethers, Signer } from 'ethers';
 import { useMetaMask } from 'metamask-react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
@@ -42,9 +42,15 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
             const chainIdNum = parseInt(chainId, 16);
             // Only works on local test
             if (chainIdNum == 31337) {
-                const provider = new ethers.providers.Web3Provider(ethereum);
-                const signer = provider.getSigner();
-                setSigner(signer);
+                const provider = new BrowserProvider(ethereum);
+                provider
+                    .getSigner()
+                    .then((signer) => {
+                        setSigner(signer);
+                    })
+                    .catch((e) => {
+                        console.error('Unable to get signer', e);
+                    });
             } else {
                 setSigner(null);
             }
@@ -53,7 +59,7 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
 
     const getCount = async (earThereumContract: EarThereum) => {
         const count = await earThereumContract.getCounter();
-        setCount(count.toNumber());
+        setCount(Number(count));
     };
 
     const incCount = async () => {

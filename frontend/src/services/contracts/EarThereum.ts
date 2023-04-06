@@ -3,37 +3,26 @@
 /* eslint-disable */
 import type {
   BaseContract,
-  BigNumber,
   BytesLike,
-  CallOverrides,
-  ContractTransaction,
-  Overrides,
-  PopulatedTransaction,
-  Signer,
-  utils,
+  FunctionFragment,
+  Result,
+  Interface,
+  AddressLike,
+  ContractRunner,
+  ContractMethod,
+  Listener,
 } from "ethers";
-import type { FunctionFragment, Result } from "@ethersproject/abi";
-import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedEventFilter,
-  TypedEvent,
+  TypedContractEvent,
+  TypedDeferredTopicFilter,
+  TypedEventLog,
   TypedListener,
-  OnEvent,
-  PromiseOrValue,
+  TypedContractMethod,
 } from "./common";
 
-export interface EarThereumInterface extends utils.Interface {
-  functions: {
-    "counter()": FunctionFragment;
-    "getCounter()": FunctionFragment;
-    "getSampleData(bytes4)": FunctionFragment;
-    "incCounter()": FunctionFragment;
-    "samples(bytes4)": FunctionFragment;
-    "uploadSample(bytes4,bytes)": FunctionFragment;
-  };
-
+export interface EarThereumInterface extends Interface {
   getFunction(
-    nameOrSignatureOrTopic:
+    nameOrSignature:
       | "counter"
       | "getCounter"
       | "getSampleData"
@@ -49,19 +38,16 @@ export interface EarThereumInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "getSampleData",
-    values: [PromiseOrValue<BytesLike>]
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "incCounter",
     values?: undefined
   ): string;
-  encodeFunctionData(
-    functionFragment: "samples",
-    values: [PromiseOrValue<BytesLike>]
-  ): string;
+  encodeFunctionData(functionFragment: "samples", values: [BytesLike]): string;
   encodeFunctionData(
     functionFragment: "uploadSample",
-    values: [PromiseOrValue<BytesLike>, PromiseOrValue<BytesLike>]
+    values: [BytesLike, BytesLike]
   ): string;
 
   decodeFunctionResult(functionFragment: "counter", data: BytesLike): Result;
@@ -76,161 +62,102 @@ export interface EarThereumInterface extends utils.Interface {
     functionFragment: "uploadSample",
     data: BytesLike
   ): Result;
-
-  events: {};
 }
 
 export interface EarThereum extends BaseContract {
-  connect(signerOrProvider: Signer | Provider | string): this;
-  attach(addressOrName: string): this;
+  connect(runner?: ContractRunner | null): BaseContract;
+  attach(addressOrName: AddressLike): this;
   deployed(): Promise<this>;
 
   interface: EarThereumInterface;
 
-  queryFilter<TEvent extends TypedEvent>(
-    event: TypedEventFilter<TEvent>,
+  queryFilter<TCEvent extends TypedContractEvent>(
+    event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TEvent>>;
+  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  queryFilter<TCEvent extends TypedContractEvent>(
+    filter: TypedDeferredTopicFilter<TCEvent>,
+    fromBlockOrBlockhash?: string | number | undefined,
+    toBlock?: string | number | undefined
+  ): Promise<Array<TypedEventLog<TCEvent>>>;
 
-  listeners<TEvent extends TypedEvent>(
-    eventFilter?: TypedEventFilter<TEvent>
-  ): Array<TypedListener<TEvent>>;
-  listeners(eventName?: string): Array<Listener>;
-  removeAllListeners<TEvent extends TypedEvent>(
-    eventFilter: TypedEventFilter<TEvent>
-  ): this;
-  removeAllListeners(eventName?: string): this;
-  off: OnEvent<this>;
-  on: OnEvent<this>;
-  once: OnEvent<this>;
-  removeListener: OnEvent<this>;
+  on<TCEvent extends TypedContractEvent>(
+    event: TCEvent,
+    listener: TypedListener<TCEvent>
+  ): Promise<this>;
+  on<TCEvent extends TypedContractEvent>(
+    filter: TypedDeferredTopicFilter<TCEvent>,
+    listener: TypedListener<TCEvent>
+  ): Promise<this>;
 
-  functions: {
-    counter(overrides?: CallOverrides): Promise<[BigNumber]>;
+  once<TCEvent extends TypedContractEvent>(
+    event: TCEvent,
+    listener: TypedListener<TCEvent>
+  ): Promise<this>;
+  once<TCEvent extends TypedContractEvent>(
+    filter: TypedDeferredTopicFilter<TCEvent>,
+    listener: TypedListener<TCEvent>
+  ): Promise<this>;
 
-    getCounter(overrides?: CallOverrides): Promise<[BigNumber]>;
+  listeners<TCEvent extends TypedContractEvent>(
+    event: TCEvent
+  ): Promise<Array<TypedListener<TCEvent>>>;
+  listeners(eventName?: string): Promise<Array<Listener>>;
+  removeAllListeners<TCEvent extends TypedContractEvent>(
+    event?: TCEvent
+  ): Promise<this>;
 
-    getSampleData(
-      id: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<[string]>;
+  counter: TypedContractMethod<[], [bigint], "view">;
 
-    incCounter(
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>;
+  getCounter: TypedContractMethod<[], [bigint], "view">;
 
-    samples(
-      arg0: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<[string, number] & { data: string; header: number }>;
+  getSampleData: TypedContractMethod<[id: BytesLike], [string], "view">;
 
-    uploadSample(
-      id: PromiseOrValue<BytesLike>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>;
-  };
+  incCounter: TypedContractMethod<[], [void], "nonpayable">;
 
-  counter(overrides?: CallOverrides): Promise<BigNumber>;
+  samples: TypedContractMethod<
+    [arg0: BytesLike],
+    [[string, bigint] & { data: string; header: bigint }],
+    "view"
+  >;
 
-  getCounter(overrides?: CallOverrides): Promise<BigNumber>;
+  uploadSample: TypedContractMethod<
+    [id: BytesLike, data: BytesLike],
+    [void],
+    "nonpayable"
+  >;
 
-  getSampleData(
-    id: PromiseOrValue<BytesLike>,
-    overrides?: CallOverrides
-  ): Promise<string>;
+  getFunction<T extends ContractMethod = ContractMethod>(
+    key: string | FunctionFragment
+  ): T;
 
-  incCounter(
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>;
-
-  samples(
-    arg0: PromiseOrValue<BytesLike>,
-    overrides?: CallOverrides
-  ): Promise<[string, number] & { data: string; header: number }>;
-
-  uploadSample(
-    id: PromiseOrValue<BytesLike>,
-    data: PromiseOrValue<BytesLike>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>;
-
-  callStatic: {
-    counter(overrides?: CallOverrides): Promise<BigNumber>;
-
-    getCounter(overrides?: CallOverrides): Promise<BigNumber>;
-
-    getSampleData(
-      id: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<string>;
-
-    incCounter(overrides?: CallOverrides): Promise<void>;
-
-    samples(
-      arg0: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<[string, number] & { data: string; header: number }>;
-
-    uploadSample(
-      id: PromiseOrValue<BytesLike>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<void>;
-  };
+  getFunction(
+    nameOrSignature: "counter"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "getCounter"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "getSampleData"
+  ): TypedContractMethod<[id: BytesLike], [string], "view">;
+  getFunction(
+    nameOrSignature: "incCounter"
+  ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "samples"
+  ): TypedContractMethod<
+    [arg0: BytesLike],
+    [[string, bigint] & { data: string; header: bigint }],
+    "view"
+  >;
+  getFunction(
+    nameOrSignature: "uploadSample"
+  ): TypedContractMethod<
+    [id: BytesLike, data: BytesLike],
+    [void],
+    "nonpayable"
+  >;
 
   filters: {};
-
-  estimateGas: {
-    counter(overrides?: CallOverrides): Promise<BigNumber>;
-
-    getCounter(overrides?: CallOverrides): Promise<BigNumber>;
-
-    getSampleData(
-      id: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    incCounter(
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>;
-
-    samples(
-      arg0: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    uploadSample(
-      id: PromiseOrValue<BytesLike>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>;
-  };
-
-  populateTransaction: {
-    counter(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    getCounter(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    getSampleData(
-      id: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    incCounter(
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>;
-
-    samples(
-      arg0: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    uploadSample(
-      id: PromiseOrValue<BytesLike>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>;
-  };
 }
