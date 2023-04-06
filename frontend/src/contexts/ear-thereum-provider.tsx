@@ -4,7 +4,7 @@ import { EarThereum, EarThereum__factory } from '@app/services/contracts';
 import { BrowserProvider, ethers, Signer } from 'ethers';
 import { useMetaMask } from 'metamask-react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-
+import latestRunJson from '@app/../../contracts/broadcast/Deploy.s.sol/31337/run-latest.json';
 export interface EarThereumContextProviderProps {
     children?: ReactNode;
 }
@@ -13,6 +13,14 @@ export interface EarThereumContextStore {
     count: number;
     earThereumContract: EarThereum | null;
     incCount: () => Promise<void>;
+}
+
+interface ForgeDeployment {
+    transactions: {
+        transactionType: 'CREATE' | 'UNKNOWN';
+        contractName: string;
+        contractAddress: string;
+    }[];
 }
 
 export const EarThereumContext = createContext<EarThereumContextStore>({} as EarThereumContextStore);
@@ -28,10 +36,15 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
     // Instantiate contract when provider ready
     useEffect(() => {
         if (signer) {
-            const earThereumContract = EarThereum__factory.connect(
-                '0x2804EaDB5821DebF21A30B70673eD3e1dDE3E5Cd',
-                signer
+            const contractCreateTx = (latestRunJson as ForgeDeployment).transactions.find(
+                ({ contractName, transactionType }) => contractName == 'EarThereum' && transactionType == 'CREATE'
             );
+
+            if (!contractCreateTx) {
+                throw 'EarThereumProvider: Unable to find contract deployment transaction';
+            }
+
+            const earThereumContract = EarThereum__factory.connect(contractCreateTx.contractAddress, signer);
             setEarThereumContract(earThereumContract);
         }
     }, [signer]);
