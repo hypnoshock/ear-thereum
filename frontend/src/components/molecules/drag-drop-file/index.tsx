@@ -60,7 +60,7 @@ export const DragDropFile: FunctionComponent<DragDropFileProps> = (props: DragDr
                     <div>
                         <p>Drag and drop your file here or</p>
                         <button className="upload-button" onClick={onButtonClick}>
-                            Upload a file
+                            Upload a XM File
                         </button>
                     </div>
                 </label>

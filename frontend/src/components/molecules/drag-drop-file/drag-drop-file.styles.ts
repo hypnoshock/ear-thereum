@@ -10,11 +10,15 @@ import { DragDropFileProps } from './index';
  * @return Base styles for the drag drop file component
  */
 const baseStyles = (_: Partial<DragDropFileProps>) => css`
-    height: 16rem;
-    width: 28rem;
+    width: 60rem;
+    height: 30rem;
     max-width: 100%;
     text-align: center;
     position: relative;
+
+    #form-file-upload {
+        height: 100%;
+    }
 
     #input-file-upload {
         display: none;

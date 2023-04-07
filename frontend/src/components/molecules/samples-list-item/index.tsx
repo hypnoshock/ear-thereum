@@ -8,6 +8,7 @@ import { styles } from './samples-list-item.styles';
 export interface SamplesListItemProps extends ComponentProps {
     sampleID: string;
     isOnChain: boolean;
+    isSelected: boolean;
     onChange?: (sampleID: string, isChecked: boolean) => void;
 }
 
@@ -16,20 +17,17 @@ const StyledSamplesListItem = styled('div')`
 `;
 
 export const SamplesListItem: FunctionComponent<SamplesListItemProps> = (props: SamplesListItemProps) => {
-    const { sampleID, onChange, ...otherProps } = props;
-    const [isChecked, setIsChecked] = useState(true);
-
+    const { sampleID, isOnChain, onChange, isSelected, ...otherProps } = props;
     function handleChange(e: ChangeEvent<HTMLInputElement>) {
-        setIsChecked(e.target.checked);
         if (onChange) {
             onChange(sampleID, e.target.checked);
         }
     }
 
     return (
-        <StyledSamplesListItem {...otherProps}>
+        <StyledSamplesListItem {...{ isOnChain, ...otherProps }}>
             <div className="sampleID">Sample ID: {sampleID}</div>
-            <input type="checkbox" checked={isChecked} onChange={handleChange} />
+            {!isOnChain && <input type="checkbox" checked={isSelected} onChange={handleChange} />}
         </StyledSamplesListItem>
     );
 };

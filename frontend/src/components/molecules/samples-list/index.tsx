@@ -9,6 +9,7 @@ import { SamplesListItem } from '../samples-list-item';
 export interface SamplesListProps extends ComponentProps {
     sampleIDs: string[];
     onChainSampleIDs: string[];
+    selectedSampleIDs: string[];
     onItemSelectChange?: (sampleID: string, isChecked: boolean) => void;
 }
 
@@ -17,17 +18,19 @@ const StyledSamplesList = styled('div')`
 `;
 
 export const SamplesList: FunctionComponent<SamplesListProps> = (props: SamplesListProps) => {
-    const { sampleIDs, onChainSampleIDs, onItemSelectChange, ...otherProps } = props;
+    const { sampleIDs, onChainSampleIDs, selectedSampleIDs, onItemSelectChange, ...otherProps } = props;
 
     return (
         <StyledSamplesList {...otherProps}>
             {sampleIDs.map((sampleID, idx) => {
                 const isOnChain = onChainSampleIDs.includes(sampleID);
+                const isSelected = selectedSampleIDs.includes(sampleID);
                 return (
                     <SamplesListItem
                         key={idx}
                         sampleID={sampleID}
                         isOnChain={isOnChain}
+                        isSelected={isSelected}
                         onChange={onItemSelectChange}
                     />
                 );

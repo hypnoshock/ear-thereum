@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import {EarThereum} from "../src/EarThereum.sol";
+import {EarThereum} from "src/EarThereum.sol";
 
 contract GameDeployer is Script {
     function setUp() public {}

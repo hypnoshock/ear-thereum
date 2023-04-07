@@ -11,14 +11,13 @@ import { SamplesListItemProps } from './index';
  */
 const baseStyles = ({ isOnChain }: Partial<SamplesListItemProps>) => css`
     display: flex;
+    justify-content: space-between;
     color: ${isOnChain ? `black` : `red`};
     background: #00000070;
     padding: 1rem;
     border-radius: 1rem;
-
-    > .sampleID {
-        min-width: 12rem;
-    }
+    min-width: 14rem;
+    margin: 0.1rem;
 `;
 
 /**

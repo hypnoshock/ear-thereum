@@ -33,13 +33,14 @@ const MAX_GAS_PER_TX = 15000000;
 export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
     const { children, ...otherProps } = props;
     const { status, connect, account, chainId } = useMetaMask();
-    const onChainSampleIDs: string[] = [];
+    const onChainSampleIDs: string[] = []; //'a5c634d8'
     // const { incCount, count } = useEarThereumContext();
-    const [uploadSampleIDs, setUploadSampleIDs] = useState<string[]>([]);
+    const [selectedSampleIDs, setSelectedSampleIDs] = useState<string[]>([]);
     const [sampleIDs, setSampleIDs] = useState<string[]>();
     const [compressedSmpsDict, setCompressedSmpsDict] = useState<SamplesDict | null>(null);
     const [compressedXM, setCompressedXM] = useState<Uint8Array | null>(null);
-    const gasEstimate = getGasEstimate(compressedSmpsDict, uploadSampleIDs, compressedXM);
+    const gasEstimate = getGasEstimate(compressedSmpsDict, selectedSampleIDs, compressedXM);
+    const transactionEstimate = gasEstimate / MAX_GAS_PER_TX;
 
     const onFiles = (files: FileList) => {
         if (files.length > 0) {
@@ -49,7 +50,7 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
                     return self.indexOf(sampleID) === idx;
                 });
                 setSampleIDs(uniqueSampleIDs);
-                setUploadSampleIDs(uniqueSampleIDs);
+                setSelectedSampleIDs(uniqueSampleIDs);
                 setCompressedSmpsDict(compressedSmpsDict);
                 setCompressedXM(compressedXM);
             });
@@ -95,13 +96,13 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
 
     const handleItemSelectChange = (sampleID: string, isChecked: boolean) => {
         if (isChecked) {
-            if (!uploadSampleIDs.includes(sampleID)) {
+            if (!selectedSampleIDs.includes(sampleID)) {
                 // Could I have pushed on the element or should I make a new array?
-                setUploadSampleIDs([...uploadSampleIDs, sampleID]);
+                setSelectedSampleIDs([...selectedSampleIDs, sampleID]);
             }
         } else {
-            const updatedList = uploadSampleIDs.filter((elm) => elm != sampleID);
-            setUploadSampleIDs(updatedList);
+            const updatedList = selectedSampleIDs.filter((elm) => elm != sampleID);
+            setSelectedSampleIDs(updatedList);
         }
     };
 
@@ -152,6 +153,20 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
         return (sampleKbs + xmKbs) * 640000;
     }
 
+    function handleSelectAll() {
+        if (!sampleIDs) return;
+
+        const notOnChain = sampleIDs.filter((sampleID) => {
+            return !onChainSampleIDs.includes(sampleID);
+        });
+
+        setSelectedSampleIDs(notOnChain);
+    }
+
+    function handleDeselectAll() {
+        setSelectedSampleIDs([]);
+    }
+
     return (
         <StyledHome {...otherProps}>
             <h1>Ear-thereum</h1>
@@ -163,15 +178,25 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
                 <SamplesList
                     sampleIDs={sampleIDs}
                     onChainSampleIDs={onChainSampleIDs}
+                    selectedSampleIDs={selectedSampleIDs}
                     onItemSelectChange={handleItemSelectChange}
                 />
             )}
+            {sampleIDs && <button onClick={handleSelectAll}>Select All</button>}
+            {sampleIDs && <button onClick={handleDeselectAll}>Deselect All</button>}
             <p>XM Kb: {getXMKbs(compressedXM)}</p>
-            <p>Sample Kb: {getSampleKbs(compressedSmpsDict, uploadSampleIDs)}</p>
-            <p>Total Kb: {getXMKbs(compressedXM) + getSampleKbs(compressedSmpsDict, uploadSampleIDs)}</p>
+            <p>Sample Kb: {getSampleKbs(compressedSmpsDict, selectedSampleIDs)}</p>
+            <p>Total Kb: {getXMKbs(compressedXM) + getSampleKbs(compressedSmpsDict, selectedSampleIDs)}</p>
             <p>Estimated Gas: {gasEstimate}</p>
-            <p>Estimated transaction count: {gasEstimate / MAX_GAS_PER_TX}</p>
-            {sampleIDs && <button>Upload Tune</button>}
+            <p>Estimated transaction count: {transactionEstimate}</p>
+            {/* TODO: Fix below */}
+            {transactionEstimate < 1 && sampleIDs && <button>Upload XM and Samples</button>}
+            {transactionEstimate >= 1 && getSampleKbs(compressedSmpsDict, selectedSampleIDs) > 0 && (
+                <button>Upload Samples</button>
+            )}
+            {transactionEstimate < 1 && onChainSampleIDs.length == onChainSampleIDs.length && (
+                <button>Upload XM</button>
+            )}
         </StyledHome>
     );
 };
