@@ -10,6 +10,7 @@ import {
     compressXM,
     decompressSamples,
     decompressXM,
+    getID,
     getXMInfo,
     reconstructXM,
     SamplesDict,
@@ -19,6 +20,9 @@ import {
 import { useMetaMask } from 'metamask-react';
 import { EarThereumContext, useEarThereumContext } from '@app/contexts/ear-thereum-provider';
 import { SamplesList } from '@app/components/molecules/samples-list';
+import { getGasEstimate } from '@app/helpers/GasHelper';
+import { getSampleKbs } from '@app/helpers/SampleHelper';
+import { keccak256 } from 'ethers';
 
 export interface HomeProps extends ComponentProps {
     children?: ReactNode;
@@ -42,10 +46,10 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
 
     const xmKbs = getXMKbs(compressedXM);
     const xmGas = getGasEstimate(xmKbs);
-    const sampleKbs = getSampleKbs(compressedSmpsDict, selectedSampleIDs);
+    const sampleKbs = getSamplesInDictKbs(compressedSmpsDict, selectedSampleIDs);
     const sampleGas = getGasEstimate(sampleKbs);
-    const xmTransactionCount = xmGas / MAX_GAS_PER_TX;
-    const samplesTransactionCount = sampleGas / MAX_GAS_PER_TX;
+    const xmTransactionCount = Math.ceil(xmGas / MAX_GAS_PER_TX);
+    const samplesTransactionCount = Math.ceil(sampleGas / MAX_GAS_PER_TX);
     const totalTransactionCount = xmTransactionCount + samplesTransactionCount;
 
     const onFiles = (files: FileList) => {
@@ -129,7 +133,7 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
         connect();
     };
 
-    function getSampleKbs(smpsDict: SamplesDict | null, uploadSampleIDs: string[]): number {
+    function getSamplesInDictKbs(smpsDict: SamplesDict | null, uploadSampleIDs: string[]): number {
         if (!smpsDict) return 0;
 
         return (
@@ -141,11 +145,6 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
 
     function getXMKbs(compressedXM: Uint8Array | null) {
         return compressedXM ? compressedXM.length / 1024 : 0;
-    }
-
-    function getGasEstimate(kbs: number): number {
-        // 1k 640000 gas
-        return kbs * 640000;
     }
 
     function handleSelectAll() {
@@ -176,6 +175,21 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
             let startIdx = 0;
             let endIdx = 1;
             while (startIdx < selectedSampleIDs.length) {
+                // Keep increasing the size of the batch until we hit our tx limit
+                // TODO: Not very smart as it picks the next sample in the array instead of looking
+                // the next that may fit
+                let gasEstimate = 0;
+                while (endIdx - 1 < sampleData.length) {
+                    const sampleKbs = getSampleKbs(sampleData[endIdx - 1]);
+                    const sampleGas = getGasEstimate(sampleKbs);
+                    if ((gasEstimate + sampleGas) / MAX_GAS_PER_TX < 1) {
+                        gasEstimate += sampleGas;
+                        endIdx += 1;
+                    } else {
+                        break;
+                    }
+                }
+
                 const batchSampleIDs = convertIDsToBytes4(selectedSampleIDs.slice(startIdx, endIdx));
                 const batchSampleData = sampleData.slice(startIdx, endIdx);
 
@@ -194,6 +208,14 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
 
             console.log('ALL DONE!');
         }
+    }
+
+    async function handleUploadXMClick() {
+        if (!compressedXM || !earThereumContract) return;
+        const id = getID(compressedXM);
+        const tx = await earThereumContract.uploadXM('0x' + id, compressedXM);
+        await tx.wait();
+        console.log(`XM Uploaded: ${id}`);
     }
 
     useEffect(() => {
@@ -217,29 +239,33 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
         return (
             <Fragment>
                 <DragDropFile onFiles={onFiles} />
-                {sampleIDs && (
+                {compressedSmpsDict && sampleIDs && (
                     <SamplesList
                         sampleIDs={sampleIDs}
                         onChainSampleIDs={existingSampleIDs}
                         selectedSampleIDs={selectedSampleIDs}
                         onItemSelectChange={handleItemSelectChange}
+                        samplesDict={compressedSmpsDict}
+                        maxGas={MAX_GAS_PER_TX}
                     />
                 )}
                 {sampleIDs.length > 0 && <button onClick={handleSelectAll}>Select All</button>}
                 {sampleIDs.length > 0 && <button onClick={handleDeselectAll}>Deselect All</button>}
+                {compressedXM && <p>XM ID: {getID(compressedXM)}</p>}
                 <p>
-                    XM Kb: {xmKbs} gas: {xmGas} transactions: {xmTransactionCount}
+                    XM Kb: {Math.round(xmKbs * 100) / 100} gas: {xmGas} transactions: {xmTransactionCount}
                 </p>
                 <p>
-                    Sample Kb: {sampleKbs} gas: {sampleGas} transactions: {samplesTransactionCount}
+                    Sample Kb: {Math.round(sampleKbs * 100) / 100} gas: {sampleGas} transactions:{' '}
+                    {samplesTransactionCount}
                 </p>
-                <p>Total Kb: {xmKbs + sampleKbs}</p>
+                <p>Total Kb: {Math.round((xmKbs + sampleKbs) * 100) / 100}</p>
                 <p>Total Gas: {sampleGas + xmGas}</p>
                 <p>Total transaction count: {totalTransactionCount}</p>
 
                 {selectedSampleIDs.length > 0 && <button onClick={handleUploadSamplesClick}>Upload Samples</button>}
-                {compressedXM && xmTransactionCount < 1 && existingSampleIDs.length == sampleIDs.length && (
-                    <button>Upload XM</button>
+                {compressedXM && xmTransactionCount <= 1 && existingSampleIDs.length == sampleIDs.length && (
+                    <button onClick={handleUploadXMClick}>Upload XM</button>
                 )}
             </Fragment>
         );

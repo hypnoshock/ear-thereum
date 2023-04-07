@@ -9,6 +9,8 @@ export interface SamplesListItemProps extends ComponentProps {
     sampleID: string;
     isOnChain: boolean;
     isSelected: boolean;
+    withinSize: boolean;
+    smpKbs: number;
     onChange?: (sampleID: string, isChecked: boolean) => void;
 }
 
@@ -17,7 +19,7 @@ const StyledSamplesListItem = styled('div')`
 `;
 
 export const SamplesListItem: FunctionComponent<SamplesListItemProps> = (props: SamplesListItemProps) => {
-    const { sampleID, isOnChain, onChange, isSelected, ...otherProps } = props;
+    const { sampleID, smpKbs, isOnChain, withinSize, isSelected, onChange, ...otherProps } = props;
     function handleChange(e: ChangeEvent<HTMLInputElement>) {
         if (onChange) {
             onChange(sampleID, e.target.checked);
@@ -25,9 +27,10 @@ export const SamplesListItem: FunctionComponent<SamplesListItemProps> = (props: 
     }
 
     return (
-        <StyledSamplesListItem {...{ isOnChain, ...otherProps }}>
-            <div className="sampleID">Sample ID: {sampleID}</div>
-            {!isOnChain && <input type="checkbox" checked={isSelected} onChange={handleChange} />}
+        <StyledSamplesListItem {...{ isOnChain, withinSize, ...otherProps }}>
+            <div className="sampleID">ID: {sampleID}</div>
+            <div className="sampleKbs">{smpKbs}kb</div>
+            {!isOnChain && withinSize && <input type="checkbox" checked={isSelected} onChange={handleChange} />}
         </StyledSamplesListItem>
     );
 };

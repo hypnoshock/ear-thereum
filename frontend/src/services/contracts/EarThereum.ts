@@ -26,9 +26,12 @@ export interface EarThereumInterface extends Interface {
       | "getExistingSampleIDs"
       | "getSampleData"
       | "getSampleDatas"
+      | "getXM"
       | "samples"
       | "uploadSample"
       | "uploadSamples"
+      | "uploadXM"
+      | "xm"
   ): FunctionFragment;
 
   encodeFunctionData(
@@ -43,6 +46,7 @@ export interface EarThereumInterface extends Interface {
     functionFragment: "getSampleDatas",
     values: [BytesLike[]]
   ): string;
+  encodeFunctionData(functionFragment: "getXM", values: [BytesLike]): string;
   encodeFunctionData(functionFragment: "samples", values: [BytesLike]): string;
   encodeFunctionData(
     functionFragment: "uploadSample",
@@ -52,6 +56,11 @@ export interface EarThereumInterface extends Interface {
     functionFragment: "uploadSamples",
     values: [BytesLike[], BytesLike[]]
   ): string;
+  encodeFunctionData(
+    functionFragment: "uploadXM",
+    values: [BytesLike, BytesLike]
+  ): string;
+  encodeFunctionData(functionFragment: "xm", values: [BytesLike]): string;
 
   decodeFunctionResult(
     functionFragment: "getExistingSampleIDs",
@@ -65,6 +74,7 @@ export interface EarThereumInterface extends Interface {
     functionFragment: "getSampleDatas",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "getXM", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "samples", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "uploadSample",
@@ -74,6 +84,8 @@ export interface EarThereumInterface extends Interface {
     functionFragment: "uploadSamples",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "uploadXM", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "xm", data: BytesLike): Result;
 }
 
 export interface EarThereum extends BaseContract {
@@ -130,6 +142,8 @@ export interface EarThereum extends BaseContract {
 
   getSampleDatas: TypedContractMethod<[ids: BytesLike[]], [string[]], "view">;
 
+  getXM: TypedContractMethod<[id: BytesLike], [string], "view">;
+
   samples: TypedContractMethod<
     [arg0: BytesLike],
     [[string, bigint] & { data: string; header: bigint }],
@@ -148,6 +162,14 @@ export interface EarThereum extends BaseContract {
     "nonpayable"
   >;
 
+  uploadXM: TypedContractMethod<
+    [id: BytesLike, data: BytesLike],
+    [void],
+    "nonpayable"
+  >;
+
+  xm: TypedContractMethod<[arg0: BytesLike], [string], "view">;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
@@ -165,6 +187,9 @@ export interface EarThereum extends BaseContract {
   getFunction(
     nameOrSignature: "getSampleDatas"
   ): TypedContractMethod<[ids: BytesLike[]], [string[]], "view">;
+  getFunction(
+    nameOrSignature: "getXM"
+  ): TypedContractMethod<[id: BytesLike], [string], "view">;
   getFunction(
     nameOrSignature: "samples"
   ): TypedContractMethod<
@@ -186,6 +211,16 @@ export interface EarThereum extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "uploadXM"
+  ): TypedContractMethod<
+    [id: BytesLike, data: BytesLike],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "xm"
+  ): TypedContractMethod<[arg0: BytesLike], [string], "view">;
 
   filters: {};
 }

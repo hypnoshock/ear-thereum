@@ -9,15 +9,20 @@ import { SamplesListItemProps } from './index';
  * @param _ The samples list item properties object
  * @return Base styles for the samples list item component
  */
-const baseStyles = ({ isOnChain }: Partial<SamplesListItemProps>) => css`
+const baseStyles = ({ isOnChain, withinSize }: Partial<SamplesListItemProps>) => css`
     display: flex;
     justify-content: space-between;
     color: ${isOnChain ? `black` : `red`};
-    background: #00000070;
+    background: ${withinSize ? `#00000070` : `#70000070`};
     padding: 1rem;
     border-radius: 1rem;
     min-width: 14rem;
     margin: 0.1rem;
+
+    > .sampleKbs {
+        font-weight: bold;
+        margin-left: 1rem;
+    }
 `;
 
 /**

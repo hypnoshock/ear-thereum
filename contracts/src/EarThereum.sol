@@ -5,6 +5,7 @@ pragma solidity ^0.8.13;
 
 contract EarThereum {
     error SampleAlreadyExists(bytes4 id);
+    error XMAlreadyExists(bytes4 id);
     error ArrayLengthMismatch(string reason);
 
     enum BitRate {
@@ -22,11 +23,18 @@ contract EarThereum {
     }
 
     mapping(bytes4 => Sample) public samples;
+    mapping(bytes4 => bytes) public xm;
 
     function uploadSample(bytes4 id, bytes calldata data) public {
         if (samples[id].data.length > 0) revert SampleAlreadyExists(id);
 
         samples[id].data = data;
+    }
+
+    function uploadXM(bytes4 id, bytes calldata data) public {
+        if (xm[id].length > 0) revert XMAlreadyExists(id);
+
+        xm[id] = data;
     }
 
     function uploadSamples(bytes4[] calldata ids, bytes[] calldata sampleData) public {
@@ -43,6 +51,10 @@ contract EarThereum {
             //     revert SampleAlreadyExists(ids[i]);
             // }
         }
+    }
+
+    function getXM(bytes4 id) public view returns (bytes memory) {
+        return xm[id];
     }
 
     function getSampleData(bytes4 id) public view returns (bytes memory) {

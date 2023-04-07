@@ -1,6 +1,6 @@
 /** @format */
 
-import { ethers, keccak256 } from 'ethers';
+import { keccak256 } from 'ethers';
 import pako from 'pako';
 
 export const ID_LEN = 4; // bytes
@@ -100,6 +100,12 @@ export function stripXM(xmBytes: Uint8Array) {
     return { strippedXM, instrumentOffset, samples };
 }
 
+export function getID(data: Uint8Array): string {
+    // 4 bytes of the keccak. NOTE: keccak string includes 0x prefix
+    // const id = ethers.keccak256(deflator.result).slice(2, 2 + ID_LEN * 2); // v6
+    return keccak256(data).slice(2, 2 + ID_LEN * 2);
+}
+
 /*
  * Uses DEFLATE to compress samples. IDs are 4 byte keccak of compressed data
  */
@@ -112,9 +118,7 @@ export function compressSamples(samples: Uint8Array[]) {
         const deflator = new pako.Deflate();
         deflator.push(smpDeltas, true);
 
-        // 4 bytes of the keccak. NOTE: keccak string includes 0x prefix
-        // const id = ethers.keccak256(deflator.result).slice(2, 2 + ID_LEN * 2); // v6
-        const id = keccak256(deflator.result).slice(2, 2 + ID_LEN * 2);
+        const id = getID(deflator.result);
         sampleIDs.push(id);
         compressedSmpsDict[id] = deflator.result;
     }
