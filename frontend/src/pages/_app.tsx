@@ -10,8 +10,8 @@ function App({ Component, pageProps }: any) {
     return (
         <Fragment>
             <Head>
-                <title>NextJS Boilerplate</title>
-                <meta name="description" content="Boilerplate project for NextJS 12.x" />
+                <title>Ear-thereum</title>
+                <meta name="description" content="EarThereum music upload platform" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <GlobalStyles />

@@ -104,7 +104,7 @@ export function stripXM(xmBytes: Uint8Array) {
  * Uses DEFLATE to compress samples. IDs are 4 byte keccak of compressed data
  */
 export function compressSamples(samples: Uint8Array[]) {
-    const compressedSmpsDict = {};
+    const compressedSmpsDict: SamplesDict = {};
     const sampleIDs = [];
 
     for (let i = 0; i < samples.length; i++) {
@@ -235,7 +235,7 @@ export function setSampleIDsInXM(xmBytes: Uint8Array, sampleIDs: string[]): void
                     }
 
                     const newSmpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
-                    console.log(`${sampleNum} name: `, newSmpName.toString());
+                    // console.log(`${sampleNum} name: `, newSmpName.toString());
                     sampleNum++; // Gobal counter so not j
                 }
 
