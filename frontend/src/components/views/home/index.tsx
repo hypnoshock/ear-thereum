@@ -1,6 +1,6 @@
 /** @format */
 
-import { FunctionComponent, ReactNode, useState } from 'react';
+import { Fragment, FunctionComponent, ReactNode, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { ComponentProps } from '@app/types/component-props';
 import { styles } from './home.styles';
@@ -17,7 +17,7 @@ import {
     stripXM
 } from '@app/utils/xm-tools';
 import { useMetaMask } from 'metamask-react';
-import { useEarThereumContext } from '@app/contexts/ear-thereum-provider';
+import { EarThereumContext, useEarThereumContext } from '@app/contexts/ear-thereum-provider';
 import { SamplesList } from '@app/components/molecules/samples-list';
 
 export interface HomeProps extends ComponentProps {
@@ -32,15 +32,21 @@ const MAX_GAS_PER_TX = 15000000;
 
 export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
     const { children, ...otherProps } = props;
-    const { status, connect, account, chainId } = useMetaMask();
-    const onChainSampleIDs: string[] = []; //'a5c634d8'
-    // const { incCount, count } = useEarThereumContext();
+    const { connect, account, chainId, status } = useMetaMask();
+    const { earThereumContract, getExistingSampleIDs, convertIDsToBytes4 } = useEarThereumContext();
     const [selectedSampleIDs, setSelectedSampleIDs] = useState<string[]>([]);
-    const [sampleIDs, setSampleIDs] = useState<string[]>();
+    const [sampleIDs, setSampleIDs] = useState<string[]>([]);
+    const [existingSampleIDs, setExistingSampleIDs] = useState<string[]>([]);
     const [compressedSmpsDict, setCompressedSmpsDict] = useState<SamplesDict | null>(null);
     const [compressedXM, setCompressedXM] = useState<Uint8Array | null>(null);
-    const gasEstimate = getGasEstimate(compressedSmpsDict, selectedSampleIDs, compressedXM);
-    const transactionEstimate = gasEstimate / MAX_GAS_PER_TX;
+
+    const xmKbs = getXMKbs(compressedXM);
+    const xmGas = getGasEstimate(xmKbs);
+    const sampleKbs = getSampleKbs(compressedSmpsDict, selectedSampleIDs);
+    const sampleGas = getGasEstimate(sampleKbs);
+    const xmTransactionCount = xmGas / MAX_GAS_PER_TX;
+    const samplesTransactionCount = sampleGas / MAX_GAS_PER_TX;
+    const totalTransactionCount = xmTransactionCount + samplesTransactionCount;
 
     const onFiles = (files: FileList) => {
         if (files.length > 0) {
@@ -50,7 +56,7 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
                     return self.indexOf(sampleID) === idx;
                 });
                 setSampleIDs(uniqueSampleIDs);
-                setSelectedSampleIDs(uniqueSampleIDs);
+                setSelectedSampleIDs([]);
                 setCompressedSmpsDict(compressedSmpsDict);
                 setCompressedXM(compressedXM);
             });
@@ -69,11 +75,6 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
             compressedSmpsDict,
             sampleIDs
         };
-    };
-
-    // Fetch sample data from blockchain
-    const fetchSamples = (sampleIDs: string[]) => {
-        return null; // not implemented
     };
 
     // const fetchXM = (xmID: string) => {
@@ -142,22 +143,16 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
         return compressedXM ? compressedXM.length / 1024 : 0;
     }
 
-    function getGasEstimate(
-        smpsDict: SamplesDict | null,
-        uploadSampleIDs: string[],
-        compressedXM: Uint8Array | null
-    ): number {
-        const sampleKbs = getSampleKbs(smpsDict, uploadSampleIDs);
-        const xmKbs = getXMKbs(compressedXM);
+    function getGasEstimate(kbs: number): number {
         // 1k 640000 gas
-        return (sampleKbs + xmKbs) * 640000;
+        return kbs * 640000;
     }
 
     function handleSelectAll() {
-        if (!sampleIDs) return;
+        if (sampleIDs.length == 0) return;
 
         const notOnChain = sampleIDs.filter((sampleID) => {
-            return !onChainSampleIDs.includes(sampleID);
+            return !existingSampleIDs.includes(sampleID);
         });
 
         setSelectedSampleIDs(notOnChain);
@@ -167,36 +162,96 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
         setSelectedSampleIDs([]);
     }
 
+    async function handleUploadSamplesClick() {
+        if (earThereumContract && compressedSmpsDict && selectedSampleIDs.length > 0) {
+            const sampleData = selectedSampleIDs.map((sampleID) => {
+                if (!compressedSmpsDict[sampleID]) {
+                    throw `Sample '${sampleID}' doesn't exist in compressedSmpsDic`;
+                }
+                return compressedSmpsDict[sampleID];
+            });
+
+            // Keep firing off transactions until we're done
+            const transactions = [];
+            let startIdx = 0;
+            let endIdx = 1;
+            while (startIdx < selectedSampleIDs.length) {
+                const batchSampleIDs = convertIDsToBytes4(selectedSampleIDs.slice(startIdx, endIdx));
+                const batchSampleData = sampleData.slice(startIdx, endIdx);
+
+                console.log(
+                    `batchSampleIDs.length: ${batchSampleIDs.length} batchSampleData.length: ${batchSampleData.length}`
+                );
+                console.log(`Attempting to upload the following: `, batchSampleIDs, batchSampleData);
+
+                const tx = await earThereumContract.uploadSamples(batchSampleIDs, batchSampleData);
+                transactions.push(tx.wait());
+                startIdx = endIdx;
+                endIdx = endIdx + 1;
+            }
+
+            await Promise.all(transactions);
+
+            console.log('ALL DONE!');
+        }
+    }
+
+    useEffect(() => {
+        if (sampleIDs && sampleIDs.length > 0) {
+            (async () => {
+                const existingSampleIDs = await getExistingSampleIDs(sampleIDs);
+                setExistingSampleIDs(existingSampleIDs);
+            })();
+        }
+    }, [getExistingSampleIDs, sampleIDs]);
+
+    // // Ensure we're not selecting any that have already been uploaded
+    // if (selectedSampleIDs.length > 0) {
+    //     const filtered = selectedSampleIDs.filter((sampleID) => {
+    //         return !existingSampleIDs.includes(sampleID);
+    //     });
+    //     setSelectedSampleIDs(filtered);
+    // }
+
+    function DisplayMainView() {
+        return (
+            <Fragment>
+                <DragDropFile onFiles={onFiles} />
+                {sampleIDs && (
+                    <SamplesList
+                        sampleIDs={sampleIDs}
+                        onChainSampleIDs={existingSampleIDs}
+                        selectedSampleIDs={selectedSampleIDs}
+                        onItemSelectChange={handleItemSelectChange}
+                    />
+                )}
+                {sampleIDs.length > 0 && <button onClick={handleSelectAll}>Select All</button>}
+                {sampleIDs.length > 0 && <button onClick={handleDeselectAll}>Deselect All</button>}
+                <p>
+                    XM Kb: {xmKbs} gas: {xmGas} transactions: {xmTransactionCount}
+                </p>
+                <p>
+                    Sample Kb: {sampleKbs} gas: {sampleGas} transactions: {samplesTransactionCount}
+                </p>
+                <p>Total Kb: {xmKbs + sampleKbs}</p>
+                <p>Total Gas: {sampleGas + xmGas}</p>
+                <p>Total transaction count: {totalTransactionCount}</p>
+
+                {selectedSampleIDs.length > 0 && <button onClick={handleUploadSamplesClick}>Upload Samples</button>}
+                {compressedXM && xmTransactionCount < 1 && existingSampleIDs.length == sampleIDs.length && (
+                    <button>Upload XM</button>
+                )}
+            </Fragment>
+        );
+    }
+
     return (
         <StyledHome {...otherProps}>
             <h1>Ear-thereum</h1>
-            <DragDropFile onFiles={onFiles} />
-            <button onClick={handleConnectClick}>Connect</button>
+            {status != 'connected' && <button onClick={handleConnectClick}>Connect</button>}
             {account && <p>Account: {account}</p>}
             {chainId && <p>Chain: {parseInt(chainId, 16)}</p>}
-            {sampleIDs && (
-                <SamplesList
-                    sampleIDs={sampleIDs}
-                    onChainSampleIDs={onChainSampleIDs}
-                    selectedSampleIDs={selectedSampleIDs}
-                    onItemSelectChange={handleItemSelectChange}
-                />
-            )}
-            {sampleIDs && <button onClick={handleSelectAll}>Select All</button>}
-            {sampleIDs && <button onClick={handleDeselectAll}>Deselect All</button>}
-            <p>XM Kb: {getXMKbs(compressedXM)}</p>
-            <p>Sample Kb: {getSampleKbs(compressedSmpsDict, selectedSampleIDs)}</p>
-            <p>Total Kb: {getXMKbs(compressedXM) + getSampleKbs(compressedSmpsDict, selectedSampleIDs)}</p>
-            <p>Estimated Gas: {gasEstimate}</p>
-            <p>Estimated transaction count: {transactionEstimate}</p>
-            {/* TODO: Fix below */}
-            {transactionEstimate < 1 && sampleIDs && <button>Upload XM and Samples</button>}
-            {transactionEstimate >= 1 && getSampleKbs(compressedSmpsDict, selectedSampleIDs) > 0 && (
-                <button>Upload Samples</button>
-            )}
-            {transactionEstimate < 1 && onChainSampleIDs.length == onChainSampleIDs.length && (
-                <button>Upload XM</button>
-            )}
+            {status == 'connected' && DisplayMainView()}
         </StyledHome>
     );
 };

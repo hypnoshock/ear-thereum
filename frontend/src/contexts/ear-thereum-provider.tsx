@@ -12,7 +12,8 @@ export interface EarThereumContextProviderProps {
 export interface EarThereumContextStore {
     count: number;
     earThereumContract: EarThereum | null;
-    incCount: () => Promise<void>;
+    getExistingSampleIDs: (sampleIDs: string[]) => Promise<string[]>;
+    convertIDsToBytes4: (sampleIDs: string[]) => Buffer[];
 }
 
 interface ForgeDeployment {
@@ -70,30 +71,27 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
         }
     }, [status, ethereum, chainId]);
 
-    const getCount = async (earThereumContract: EarThereum) => {
-        const count = await earThereumContract.getCounter();
-        setCount(Number(count));
+    const convertIDsToBytes4 = (sampleIDs: string[]) => {
+        return sampleIDs.map((sampleID) => Buffer.from(sampleID, 'hex'));
     };
 
-    const incCount = async () => {
+    const getExistingSampleIDs = async (sampleIDs: string[]): Promise<string[]> => {
         if (earThereumContract) {
-            await (await earThereumContract.incCounter()).wait();
-            await getCount(earThereumContract);
+            const sampleIDsBytes = convertIDsToBytes4(sampleIDs);
+            const { existingSampleIDs } = await earThereumContract.getExistingSampleIDs(sampleIDsBytes);
+            return existingSampleIDs
+                .map((sampleID) => sampleID.replace('0x', ''))
+                .filter((sampleID) => sampleID != '00000000');
+        } else {
+            return [];
         }
     };
-
-    useEffect(() => {
-        if (earThereumContract && signer) {
-            getCount(earThereumContract);
-        } else {
-            setCount(-1);
-        }
-    }, [earThereumContract, signer]);
 
     const store: EarThereumContextStore = {
         count,
         earThereumContract,
-        incCount
+        getExistingSampleIDs,
+        convertIDsToBytes4
     };
 
     return <EarThereumContext.Provider value={store}>{children}</EarThereumContext.Provider>;

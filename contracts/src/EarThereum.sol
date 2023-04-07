@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 
 contract EarThereum {
     error SampleAlreadyExists(bytes4 id);
-    error ArrayLengthsMustMatch();
+    error ArrayLengthMismatch(string reason);
 
     enum BitRate {
         BIT8,
@@ -31,7 +31,7 @@ contract EarThereum {
 
     function uploadSamples(bytes4[] calldata ids, bytes[] calldata sampleData) public {
         if (ids.length != sampleData.length) {
-            revert ArrayLengthsMustMatch();
+            revert ArrayLengthMismatch("EarThereum: ArrayLengthMismatch");
         }
 
         for (uint8 i = 0; i < ids.length; i++) {

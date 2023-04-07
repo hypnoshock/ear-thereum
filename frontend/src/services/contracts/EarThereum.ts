@@ -23,43 +23,55 @@ import type {
 export interface EarThereumInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "counter"
-      | "getCounter"
+      | "getExistingSampleIDs"
       | "getSampleData"
-      | "incCounter"
+      | "getSampleDatas"
       | "samples"
       | "uploadSample"
+      | "uploadSamples"
   ): FunctionFragment;
 
-  encodeFunctionData(functionFragment: "counter", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "getCounter",
-    values?: undefined
+    functionFragment: "getExistingSampleIDs",
+    values: [BytesLike[]]
   ): string;
   encodeFunctionData(
     functionFragment: "getSampleData",
     values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "incCounter",
-    values?: undefined
+    functionFragment: "getSampleDatas",
+    values: [BytesLike[]]
   ): string;
   encodeFunctionData(functionFragment: "samples", values: [BytesLike]): string;
   encodeFunctionData(
     functionFragment: "uploadSample",
     values: [BytesLike, BytesLike]
   ): string;
+  encodeFunctionData(
+    functionFragment: "uploadSamples",
+    values: [BytesLike[], BytesLike[]]
+  ): string;
 
-  decodeFunctionResult(functionFragment: "counter", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "getCounter", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getExistingSampleIDs",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "getSampleData",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "incCounter", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getSampleDatas",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "samples", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "uploadSample",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "uploadSamples",
     data: BytesLike
   ): Result;
 }
@@ -108,13 +120,15 @@ export interface EarThereum extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  counter: TypedContractMethod<[], [bigint], "view">;
-
-  getCounter: TypedContractMethod<[], [bigint], "view">;
+  getExistingSampleIDs: TypedContractMethod<
+    [ids: BytesLike[]],
+    [[string[], bigint] & { existingSampleIDs: string[]; smpCount: bigint }],
+    "view"
+  >;
 
   getSampleData: TypedContractMethod<[id: BytesLike], [string], "view">;
 
-  incCounter: TypedContractMethod<[], [void], "nonpayable">;
+  getSampleDatas: TypedContractMethod<[ids: BytesLike[]], [string[]], "view">;
 
   samples: TypedContractMethod<
     [arg0: BytesLike],
@@ -128,22 +142,29 @@ export interface EarThereum extends BaseContract {
     "nonpayable"
   >;
 
+  uploadSamples: TypedContractMethod<
+    [ids: BytesLike[], sampleData: BytesLike[]],
+    [void],
+    "nonpayable"
+  >;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "counter"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getCounter"
-  ): TypedContractMethod<[], [bigint], "view">;
+    nameOrSignature: "getExistingSampleIDs"
+  ): TypedContractMethod<
+    [ids: BytesLike[]],
+    [[string[], bigint] & { existingSampleIDs: string[]; smpCount: bigint }],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "getSampleData"
   ): TypedContractMethod<[id: BytesLike], [string], "view">;
   getFunction(
-    nameOrSignature: "incCounter"
-  ): TypedContractMethod<[], [void], "nonpayable">;
+    nameOrSignature: "getSampleDatas"
+  ): TypedContractMethod<[ids: BytesLike[]], [string[]], "view">;
   getFunction(
     nameOrSignature: "samples"
   ): TypedContractMethod<
@@ -155,6 +176,13 @@ export interface EarThereum extends BaseContract {
     nameOrSignature: "uploadSample"
   ): TypedContractMethod<
     [id: BytesLike, data: BytesLike],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "uploadSamples"
+  ): TypedContractMethod<
+    [ids: BytesLike[], sampleData: BytesLike[]],
     [void],
     "nonpayable"
   >;
