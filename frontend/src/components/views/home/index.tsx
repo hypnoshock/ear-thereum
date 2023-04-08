@@ -5,24 +5,12 @@ import styled from 'styled-components';
 import { ComponentProps } from '@app/types/component-props';
 import { styles } from './home.styles';
 import { DragDropFile } from '@app/components/molecules/drag-drop-file';
-import {
-    compressSamples,
-    compressXM,
-    decompressSamples,
-    decompressXM,
-    getID,
-    getXMInfo,
-    reconstructXM,
-    SamplesDict,
-    setSampleIDsInXM,
-    stripXM
-} from '@app/utils/xm-tools';
+import { compressSamples, compressXM, getID, SamplesDict, setSampleIDsInXM, stripXM } from '@app/utils/xm-tools';
 import { useMetaMask } from 'metamask-react';
-import { EarThereumContext, useEarThereumContext } from '@app/contexts/ear-thereum-provider';
+import { useEarThereumContext } from '@app/contexts/ear-thereum-provider';
 import { SamplesList } from '@app/components/molecules/samples-list';
 import { getGasEstimate } from '@app/helpers/GasHelper';
 import { getSampleKbs } from '@app/helpers/SampleHelper';
-import { keccak256 } from 'ethers';
 
 export interface HomeProps extends ComponentProps {
     children?: ReactNode;
@@ -81,24 +69,6 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
         };
     };
 
-    // const fetchXM = (xmID: string) => {
-    //     const compressedXM = fetchXMFromChain(xmID);
-    //     const compressedSmpsDict = fetchSamplesFromChain(sampleIDs);
-
-    //     return { compressedXM, compressedSmpsDict };
-    // };
-
-    // const reconstructXM = (compressedXM: Uint8Array, compressedSmpsDict: SamplesDict) => {
-    //     const decompressedXM = decompressXM(compressedXM);
-    //     const { sampleIDs } = getXMInfo(decompressedXM);
-
-    //     const decompressedSmpsDict = decompressSamples(compressedSmpsDict);
-    //     const reconstructedXM = reconstructXM(decompressedXM, decompressedSmpsDict);
-
-    //     return reconstructedXM;
-    //     // downloadFile(reconstructedXM, 'reconstructed.xm');
-    // };
-
     const handleItemSelectChange = (sampleID: string, isChecked: boolean) => {
         if (isChecked) {
             if (!selectedSampleIDs.includes(sampleID)) {
@@ -109,24 +79,6 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
             const updatedList = selectedSampleIDs.filter((elm) => elm != sampleID);
             setSelectedSampleIDs(updatedList);
         }
-    };
-
-    // Better way of doing this?
-    const downloadFile = (data: Uint8Array, filename: string) => {
-        const blob = new Blob([data], { type: 'application/octet-stream' });
-
-        const url = URL.createObjectURL(blob);
-
-        // Create a hidden anchor element with the download attribute set to the filename
-        const anchor = document.createElement('a');
-        anchor.style.display = 'none';
-        anchor.download = filename;
-        anchor.href = url;
-
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(url);
     };
 
     const handleConnectClick = () => {

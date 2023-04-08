@@ -1,6 +1,6 @@
 /** @format */
 
-import { ChangeEvent, FunctionComponent, ReactNode, useState } from 'react';
+import { ChangeEvent, FunctionComponent } from 'react';
 import styled from 'styled-components';
 import { ComponentProps } from '@app/types/component-props';
 import { styles } from './samples-list-item.styles';
@@ -30,7 +30,7 @@ export const SamplesListItem: FunctionComponent<SamplesListItemProps> = (props: 
         <StyledSamplesListItem {...{ isOnChain, withinSize, ...otherProps }}>
             <div className="sampleID">ID: {sampleID}</div>
             <div className="sampleKbs">{smpKbs}kb</div>
-            {!isOnChain && withinSize && <input type="checkbox" checked={isSelected} onChange={handleChange} />}
+            {!isOnChain && <input type="checkbox" checked={isSelected} onChange={handleChange} />}
         </StyledSamplesListItem>
     );
 };
