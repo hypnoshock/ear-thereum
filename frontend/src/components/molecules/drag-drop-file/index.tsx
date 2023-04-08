@@ -16,7 +16,7 @@ const StyledDragDropFile = styled('div')`
 `;
 
 export const DragDropFile: FunctionComponent<DragDropFileProps> = (props: DragDropFileProps) => {
-    const { onFiles } = props;
+    const { onFiles, children } = props;
     const [dragActive, setDragActive] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -57,12 +57,7 @@ export const DragDropFile: FunctionComponent<DragDropFileProps> = (props: DragDr
             <form id="form-file-upload" onDragEnter={handleDrag} onSubmit={(e) => e.preventDefault()}>
                 <input ref={inputRef} type="file" id="input-file-upload" multiple={true} onChange={handleRefChange} />
                 <label id="label-file-upload" htmlFor="input-file-upload" className={dragActive ? 'drag-active' : ''}>
-                    <div>
-                        <p>Drag and drop your file here or</p>
-                        <button className="upload-button" onClick={onButtonClick}>
-                            Upload a XM File
-                        </button>
-                    </div>
+                    {children}
                 </label>
                 {dragActive && (
                     <div

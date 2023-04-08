@@ -1,5 +1,6 @@
 /** @format */
 
+import { colors } from '@app/styles/colors';
 import { css } from 'styled-components';
 import { DragDropFileProps } from './index';
 
@@ -10,14 +11,26 @@ import { DragDropFileProps } from './index';
  * @return Base styles for the drag drop file component
  */
 const baseStyles = (_: Partial<DragDropFileProps>) => css`
-    width: 60rem;
-    height: 30rem;
+    width: 100%;
+    height: 20rem;
     max-width: 100%;
     text-align: center;
     position: relative;
+    color: ${colors.itemText};
 
     #form-file-upload {
+        width: 100%;
         height: 100%;
+
+        border-width: 2px;
+        border-radius: 1rem;
+        border-style: dashed;
+        border-color: ${colors.itemText};
+        background-color: #f8fafc;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     #input-file-upload {
@@ -25,32 +38,16 @@ const baseStyles = (_: Partial<DragDropFileProps>) => css`
     }
 
     #label-file-upload {
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-width: 2px;
-        border-radius: 1rem;
-        border-style: dashed;
-        border-color: #cbd5e1;
-        background-color: #f8fafc;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    #label-file-upload:hover {
+        text-decoration: underline;
     }
 
     #label-file-upload.drag-active {
         background-color: #ffffff;
-    }
-
-    .upload-button {
-        cursor: pointer;
-        padding: 0.25rem;
-        font-size: 1rem;
-        border: none;
-        font-family: 'Oswald', sans-serif;
-        background-color: transparent;
-    }
-
-    .upload-button:hover {
-        text-decoration-line: underline;
     }
 
     #drag-file-element {

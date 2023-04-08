@@ -344,7 +344,7 @@ export function reconstructXM(xmBytes: Uint8Array, smpsDict: SamplesDict): Uint8
     return reconstructedXMBytes;
 }
 
-export function getXMInfo(xmBytes: Uint8Array) {
+export function getXMInfo(xmBytes: Uint8Array, isFullFile?: boolean) {
     // -- HEADER
     const headerSize = new DataView(xmBytes.buffer, 60, 4).getInt32(0, true);
     const header = new DataView(xmBytes.buffer, 0, 60 + headerSize);
@@ -379,6 +379,7 @@ export function getXMInfo(xmBytes: Uint8Array) {
         console.log('instName: ', new TextDecoder().decode(instName));
 
         const numSamples = instHeader.getInt16(27, true);
+        let instSmpDataLen = 0;
         if (numSamples > 0) {
             // Instrument header part 2
             const smpHeaderSize = instHeader.getInt32(29, true);
@@ -390,6 +391,7 @@ export function getXMInfo(xmBytes: Uint8Array) {
                 if (smpLen > 0) {
                     const smpName = new DataView(smpHeader.buffer, smpHeader.byteOffset + 18, ID_LEN * 2);
                     const smpID = new TextDecoder().decode(smpName);
+                    instSmpDataLen += smpLen;
                     sampleLengths.push(smpLen);
                     sampleIDs.push(smpID);
                 }
@@ -398,6 +400,9 @@ export function getXMInfo(xmBytes: Uint8Array) {
             }
 
             // No sample data so no need to increment offset
+            if (isFullFile) {
+                currentReadOffset += instSmpDataLen;
+            }
         }
     }
 

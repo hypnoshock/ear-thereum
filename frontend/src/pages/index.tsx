@@ -2,15 +2,18 @@
 
 import Head from 'next/head';
 import { Home } from '@app/components/views/home';
+import { Layout } from '@app/components/organisms/layout';
 
 export default function HomePage() {
     return (
         <div>
             <Head>
-                <title>Ear-thereum</title>
-                <meta property="og:title" content="Ear-thereum" key="title" />
+                <title>Immutatune</title>
+                <meta property="og:title" content="Immutatune" key="title" />
             </Head>
-            <Home />
+            <Layout>
+                <Home />
+            </Layout>
         </div>
     );
 }

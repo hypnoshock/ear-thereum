@@ -1,5 +1,6 @@
 /** @format */
 
+import { colors } from '@app/styles/colors';
 import { css } from 'styled-components';
 import { SamplesListItemProps } from './index';
 
@@ -12,16 +13,22 @@ import { SamplesListItemProps } from './index';
 const baseStyles = ({ isOnChain, withinSize }: Partial<SamplesListItemProps>) => css`
     display: flex;
     justify-content: space-between;
-    color: ${isOnChain ? `black` : `red`};
-    background: ${withinSize ? `#00000070` : `#70000070`};
+    color: ${isOnChain ? colors.itemText : withinSize ? colors.bodyText : colors.itemText};
+    background: ${withinSize ? colors.itemBG : colors.bodyText};
+    border: transparent 1px solid;
+    border-color: ${withinSize ? 'transparent' : colors.bodyText};
     padding: 1rem;
     border-radius: 1rem;
-    min-width: 14rem;
-    margin: 0.1rem;
+    min-width: 20rem;
+    margin: 0.5rem;
 
     > .sampleKbs {
         font-weight: bold;
         margin-left: 1rem;
+    }
+
+    input[type='checkbox'] {
+        accent-color: ${colors.itemText};
     }
 `;
 

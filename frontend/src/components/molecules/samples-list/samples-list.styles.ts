@@ -12,6 +12,7 @@ import { SamplesListProps } from './index';
 const baseStyles = (_: Partial<SamplesListProps>) => css`
     display: flex;
     flex-wrap: wrap;
+    justify-content: space-around;
 `;
 
 /**

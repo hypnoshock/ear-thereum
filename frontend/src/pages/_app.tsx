@@ -10,8 +10,8 @@ function App({ Component, pageProps }: any) {
     return (
         <Fragment>
             <Head>
-                <title>Ear-thereum</title>
-                <meta name="description" content="EarThereum music upload platform" />
+                <title>Immutatune</title>
+                <meta name="description" content="Immutatune music collaboration platform" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
             <GlobalStyles />
