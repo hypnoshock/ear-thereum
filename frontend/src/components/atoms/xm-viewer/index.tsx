@@ -76,8 +76,10 @@ export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps)
                 setSmpsDict(smpsDict);
             };
             const { sampleIDs } = xmInfo;
-            // TODO: Filter to unique ones!
-            fetchSamples(sampleIDs);
+            const uniqueSampleIDs = sampleIDs.filter((sampleID, idx, self) => {
+                return self.indexOf(sampleID) === idx;
+            });
+            fetchSamples(uniqueSampleIDs);
         }
     }, [xmInfo, earThereumContract, xmSongData, smpsDict]);
 

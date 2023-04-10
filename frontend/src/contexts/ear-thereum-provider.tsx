@@ -25,6 +25,18 @@ interface ForgeDeployment {
     }[];
 }
 
+function getDeployBlockHash(contractName: string): string {
+    const tx = latestRunJson.transactions.find(
+        (tx) => tx.contractName == contractName && tx.transactionType == 'CREATE'
+    );
+    if (tx) {
+        const receipt = latestRunJson.receipts.find((r) => r.transactionHash == tx?.hash);
+        return receipt ? receipt.blockHash : '';
+    }
+
+    return '';
+}
+
 export const EarThereumContext = createContext<EarThereumContextStore>({} as EarThereumContextStore);
 
 export const useEarThereumContext = () => useContext(EarThereumContext);
@@ -54,24 +66,65 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
 
     useEffect(() => {
         if (earThereumContract) {
-            // TODO: set the block to the contract deploy bblock
+            // TODO: set the block to the contract deploy block. This will get all tunes/samples from
+            //       the start of this project which is fine for now but obviously won't scale
+            const blockHash = getDeployBlockHash('EarThereum');
+            console.log(`blockHash: ${blockHash}`);
+
             // Samples
-            earThereumContract.queryFilter(earThereumContract.filters.SampleUploaded()).then((logs) => {
-                const uploadedSamples = logs.map((log) => {
-                    return log.args[0];
+            const sampleUploadFilter = earThereumContract.filters.SampleUploaded();
+            earThereumContract.queryFilter(sampleUploadFilter).then((logs) => {
+                const sampleIDs = logs.map((log) => {
+                    return log.args[0].replace('0x', '');
                 });
-                setUploadedSamples(uploadedSamples);
+                const uniqueSampleIDs = sampleIDs.filter((sampleID, idx, self) => {
+                    return self.indexOf(sampleID) === idx;
+                });
+                setUploadedSamples(uniqueSampleIDs);
             });
 
             // Tunes (XMs)
             earThereumContract.queryFilter(earThereumContract.filters.SongUploaded()).then((logs) => {
-                const uploadedTunes = logs.map((log) => {
+                const tuneIDs = logs.map((log) => {
                     return log.args[0];
                 });
-                setUploadedTunes(uploadedTunes);
+                const uniqueTuneIDs = tuneIDs.filter((tuneID, idx, self) => {
+                    return self.indexOf(tuneID) === idx;
+                });
+                setUploadedTunes(uniqueTuneIDs);
             });
         }
     }, [earThereumContract]);
+
+    useEffect(() => {
+        if (earThereumContract) {
+            // Samples event
+            const sampleUploadedEvent = earThereumContract.getEvent('SampleUploaded');
+            earThereumContract.on(earThereumContract.getEvent('SampleUploaded'), (idPrefixed: string) => {
+                const id = idPrefixed.replace('0x', '');
+                if (!uploadedSamples.includes(id)) {
+                    setUploadedSamples([...uploadedSamples, id]);
+                }
+            });
+
+            // Tunes event
+            const songUploadedEvent = earThereumContract.getEvent('SongUploaded');
+            earThereumContract.on(songUploadedEvent, (idPrefixed: string) => {
+                const id = idPrefixed.replace('0x', '');
+                if (!uploadedTunes.includes(id)) {
+                    setUploadedTunes([...uploadedTunes, id]);
+                }
+            });
+
+            // cleanup function to unsubscribe from the event when the component unmounts
+            return () => {
+                earThereumContract.removeAllListeners(sampleUploadedEvent);
+                earThereumContract.removeAllListeners(songUploadedEvent);
+            };
+        }
+
+        return;
+    }, [earThereumContract, uploadedSamples, uploadedTunes]);
 
     // Instantiate provider when MetaMask is connected
     useEffect(() => {

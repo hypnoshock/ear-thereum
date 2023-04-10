@@ -15,7 +15,6 @@ const baseStyles = (_: Partial<TuneProps>) => css`
     color: ${colors.itemText};
     border-radius: 2rem;
     padding: 1rem;
-    margin: 0.5rem;
 
     /* border-style: solid;
     border-width: 1px;
