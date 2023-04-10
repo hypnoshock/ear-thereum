@@ -1,7 +1,7 @@
 /** @format */
 
 import { EarThereum, EarThereum__factory } from '@app/services/contracts';
-import { BrowserProvider, ethers, Signer } from 'ethers';
+import { BrowserProvider, Signer } from 'ethers';
 import { useMetaMask } from 'metamask-react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import latestRunJson from '@app/../../contracts/broadcast/Deploy.s.sol/31337/run-latest.json';
@@ -10,10 +10,11 @@ export interface EarThereumContextProviderProps {
 }
 
 export interface EarThereumContextStore {
-    count: number;
     earThereumContract: EarThereum | null;
     getExistingSampleIDs: (sampleIDs: string[]) => Promise<string[]>;
     convertIDsToBytes4: (sampleIDs: string[]) => Buffer[];
+    uploadedTunes: string[];
+    uploadedSamples: string[];
 }
 
 interface ForgeDeployment {
@@ -32,7 +33,8 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
     const { status, ethereum, chainId } = useMetaMask();
     const [earThereumContract, setEarThereumContract] = useState<EarThereum | null>(null);
     const [signer, setSigner] = useState<Signer | null>(null);
-    const [count, setCount] = useState(-1);
+    const [uploadedTunes, setUploadedTunes] = useState<string[]>([]);
+    const [uploadedSamples, setUploadedSamples] = useState<string[]>([]);
 
     // Instantiate contract when provider ready
     useEffect(() => {
@@ -49,6 +51,27 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
             setEarThereumContract(earThereumContract);
         }
     }, [signer]);
+
+    useEffect(() => {
+        if (earThereumContract) {
+            // TODO: set the block to the contract deploy bblock
+            // Samples
+            earThereumContract.queryFilter(earThereumContract.filters.SampleUploaded()).then((logs) => {
+                const uploadedSamples = logs.map((log) => {
+                    return log.args[0];
+                });
+                setUploadedSamples(uploadedSamples);
+            });
+
+            // Tunes (XMs)
+            earThereumContract.queryFilter(earThereumContract.filters.SongUploaded()).then((logs) => {
+                const uploadedTunes = logs.map((log) => {
+                    return log.args[0];
+                });
+                setUploadedTunes(uploadedTunes);
+            });
+        }
+    }, [earThereumContract]);
 
     // Instantiate provider when MetaMask is connected
     useEffect(() => {
@@ -75,6 +98,7 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
         return sampleIDs.map((sampleID) => Buffer.from(sampleID, 'hex'));
     };
 
+    // TODO: Should be able to use the IDs fetched from the logs instead of asking the contract
     const getExistingSampleIDs = async (sampleIDs: string[]): Promise<string[]> => {
         if (earThereumContract) {
             const sampleIDsBytes = convertIDsToBytes4(sampleIDs);
@@ -88,8 +112,9 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
     };
 
     const store: EarThereumContextStore = {
-        count,
         earThereumContract,
+        uploadedTunes,
+        uploadedSamples,
         getExistingSampleIDs,
         convertIDsToBytes4
     };

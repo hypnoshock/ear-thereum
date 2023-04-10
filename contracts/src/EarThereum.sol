@@ -22,6 +22,9 @@ contract EarThereum {
         BitRate bitRate;
     }
 
+    event SongUploaded(bytes4 id);
+    event SampleUploaded(bytes4 id);
+
     mapping(bytes4 => Sample) public samples;
     mapping(bytes4 => bytes) public xm;
 
@@ -29,12 +32,15 @@ contract EarThereum {
         if (samples[id].data.length > 0) revert SampleAlreadyExists(id);
 
         samples[id].data = data;
+        emit SampleUploaded(id);
     }
 
     function uploadXM(bytes4 id, bytes calldata data) public {
         if (xm[id].length > 0) revert XMAlreadyExists(id);
 
         xm[id] = data;
+
+        emit SongUploaded(id);
     }
 
     function uploadSamples(bytes4[] calldata ids, bytes[] calldata sampleData) public {
@@ -50,6 +56,8 @@ contract EarThereum {
             // else {
             //     revert SampleAlreadyExists(ids[i]);
             // }
+
+            emit SampleUploaded(ids[i]);
         }
     }
 

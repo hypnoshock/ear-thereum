@@ -7,6 +7,7 @@ import type {
   FunctionFragment,
   Result,
   Interface,
+  EventFragment,
   AddressLike,
   ContractRunner,
   ContractMethod,
@@ -16,6 +17,7 @@ import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
   TypedEventLog,
+  TypedLogDescription,
   TypedListener,
   TypedContractMethod,
 } from "./common";
@@ -33,6 +35,10 @@ export interface EarThereumInterface extends Interface {
       | "uploadXM"
       | "xm"
   ): FunctionFragment;
+
+  getEvent(
+    nameOrSignatureOrTopic: "SampleUploaded" | "SongUploaded"
+  ): EventFragment;
 
   encodeFunctionData(
     functionFragment: "getExistingSampleIDs",
@@ -86,6 +92,30 @@ export interface EarThereumInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "uploadXM", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "xm", data: BytesLike): Result;
+}
+
+export namespace SampleUploadedEvent {
+  export type InputTuple = [id: BytesLike];
+  export type OutputTuple = [id: string];
+  export interface OutputObject {
+    id: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace SongUploadedEvent {
+  export type InputTuple = [id: BytesLike];
+  export type OutputTuple = [id: string];
+  export interface OutputObject {
+    id: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export interface EarThereum extends BaseContract {
@@ -222,5 +252,42 @@ export interface EarThereum extends BaseContract {
     nameOrSignature: "xm"
   ): TypedContractMethod<[arg0: BytesLike], [string], "view">;
 
-  filters: {};
+  getEvent(
+    key: "SampleUploaded"
+  ): TypedContractEvent<
+    SampleUploadedEvent.InputTuple,
+    SampleUploadedEvent.OutputTuple,
+    SampleUploadedEvent.OutputObject
+  >;
+  getEvent(
+    key: "SongUploaded"
+  ): TypedContractEvent<
+    SongUploadedEvent.InputTuple,
+    SongUploadedEvent.OutputTuple,
+    SongUploadedEvent.OutputObject
+  >;
+
+  filters: {
+    "SampleUploaded(bytes4)": TypedContractEvent<
+      SampleUploadedEvent.InputTuple,
+      SampleUploadedEvent.OutputTuple,
+      SampleUploadedEvent.OutputObject
+    >;
+    SampleUploaded: TypedContractEvent<
+      SampleUploadedEvent.InputTuple,
+      SampleUploadedEvent.OutputTuple,
+      SampleUploadedEvent.OutputObject
+    >;
+
+    "SongUploaded(bytes4)": TypedContractEvent<
+      SongUploadedEvent.InputTuple,
+      SongUploadedEvent.OutputTuple,
+      SongUploadedEvent.OutputObject
+    >;
+    SongUploaded: TypedContractEvent<
+      SongUploadedEvent.InputTuple,
+      SongUploadedEvent.OutputTuple,
+      SongUploadedEvent.OutputObject
+    >;
+  };
 }

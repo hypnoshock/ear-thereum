@@ -6,25 +6,26 @@ import { ComponentProps } from '@app/types/component-props';
 import { styles } from './tune-list.styles';
 import { Tune } from '@app/components/atoms/tune';
 
-export interface TuneListProps extends ComponentProps {}
+export interface TuneListProps extends ComponentProps {
+    tuneIDs: string[]; // Essentially xmIDs but generically calling them 'tunes' as I'll implement .mod files soon
+    onTuneClick?: (id: string) => void;
+}
 
 const StyledTuneList = styled('div')`
     ${styles}
 `;
 
 export const TuneList: FunctionComponent<TuneListProps> = (props: TuneListProps) => {
-    const { ...otherProps } = props;
+    const { tuneIDs, onTuneClick, ...otherProps } = props;
 
     return (
         <StyledTuneList {...otherProps}>
-            <Tune name="Tune name 1" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
-            <Tune name="Tune name 2" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
-            <Tune name="Tune name 3" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
-            <Tune name="Tune name 4" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
-            <Tune name="Tune name 5" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
-            <Tune name="Tune name 6" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
-            <Tune name="Tune name 7" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
-            <Tune name="Tune name 8" uploader="0xDeee4887A6f90c1F08Be2151A3aa23D05bA4C545" tuneID="47ef36bc" />
+            {tuneIDs.map((tuneID, idx) => {
+                return (
+                    <Tune key={tuneID} name={'Tune name ' + idx} uploader="0x0" tuneID={tuneID} onClick={onTuneClick} />
+                );
+            })}
+            {tuneIDs.length == 0 && <p>No tunes uploaded yet</p>}
         </StyledTuneList>
     );
 };

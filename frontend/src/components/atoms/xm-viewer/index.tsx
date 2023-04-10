@@ -39,6 +39,9 @@ export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps)
     const [xm, setXM] = useState<Uint8Array>();
 
     const xmInfo = xmSongData ? getXMInfo(xmSongData) : null;
+    const moduleName = xmInfo ? xmInfo.moduleName : '';
+
+    console.log(`Name: '${moduleName}'. hasName: ${moduleName !== ''} len: ${moduleName.length}`);
 
     useEffect(() => {
         if (earThereumContract && !xmSongData) {
@@ -53,6 +56,7 @@ export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps)
         }
     }, [earThereumContract, xmSongData, xmID]);
 
+    // Fetch sample data from chain and decompress
     useEffect(() => {
         if (xmInfo && earThereumContract && xmSongData && !smpsDict) {
             const fetchSamples = async (sampleIDs: string[]) => {
@@ -77,6 +81,7 @@ export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps)
         }
     }, [xmInfo, earThereumContract, xmSongData, smpsDict]);
 
+    // Reconstruct XM file
     useEffect(() => {
         if (xmSongData && smpsDict && !xm) {
             const reconstructedXM = reconstructXM(xmSongData, smpsDict);
@@ -104,7 +109,7 @@ export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps)
 
     const handleDownloadClick = () => {
         if (xm && xmInfo) {
-            const filename = xmInfo.moduleName ? sanitize(xmInfo.moduleName) + '.xm' : xmID + '.xm';
+            const filename = moduleName ? sanitize(xmInfo.moduleName) + '.xm' : xmID + '.xm';
             downloadFile(xm, filename);
         }
     };
@@ -112,7 +117,7 @@ export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps)
     return (
         <StyledXmViewer {...otherProps}>
             <div>XM ID: {xmID}</div>
-            {xmInfo && <div>{xmInfo.moduleName}</div>}
+            {moduleName && <div>Name: {moduleName}</div>}
             {smpsDict && xm && <button onClick={handleDownloadClick}>download</button>}
         </StyledXmViewer>
     );
