@@ -172,6 +172,7 @@ export const Upload: FunctionComponent<UploadProps> = (props: UploadProps) => {
 
     async function handleUploadXMClick() {
         if (!compressedXM || !earThereumContract) return;
+        console.log('handleUploadXMClick');
         const id = getID(compressedXM);
         const tx = await earThereumContract.uploadXM('0x' + id, compressedXM);
         await tx.wait();

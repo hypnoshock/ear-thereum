@@ -4,21 +4,9 @@ import { FunctionComponent, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { ComponentProps } from '@app/types/component-props';
 import { styles } from './xm-viewer.styles';
-import {
-    compressSamples,
-    compressXM,
-    decompressSamples,
-    decompressXM,
-    getID,
-    getXMInfo,
-    reconstructXM,
-    SamplesDict,
-    setSampleIDsInXM,
-    stripXM
-} from '@app/utils/xm-tools';
+import { decompressSamples, decompressXM, getXMInfo, reconstructXM, SamplesDict } from '@app/utils/xm-tools';
 import { useEarThereumContext } from '@app/contexts/ear-thereum-provider';
 import { getBytes } from 'ethers';
-import { SamplesList } from '@app/components/molecules/samples-list';
 import sanitize from 'sanitize-filename';
 
 export interface XmViewerProps extends ComponentProps {
@@ -31,9 +19,9 @@ const StyledXmViewer = styled('div')`
 
 export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps) => {
     const { xmID, ...otherProps } = props;
-    const { earThereumContract, getExistingSampleIDs, convertIDsToBytes4 } = useEarThereumContext();
-    const [loading, setIsLoading] = useState(true);
-    const [hasErrored, setHasErrored] = useState(false);
+    const { earThereumContract } = useEarThereumContext();
+    // const [loading, setIsLoading] = useState(true);
+    // const [hasErrored, setHasErrored] = useState(false);
     const [xmSongData, setXMSongData] = useState<Uint8Array>();
     const [smpsDict, setSmpsDict] = useState<SamplesDict>();
     const [xm, setXM] = useState<Uint8Array>();

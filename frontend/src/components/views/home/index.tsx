@@ -25,6 +25,7 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
     };
 
     const handleSampleClick = (tuneID: string) => {
+        console.log(tuneID);
         // router.push(`/sample?id=${tuneID}`);
     };
 

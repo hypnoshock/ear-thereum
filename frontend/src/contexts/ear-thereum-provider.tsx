@@ -4,7 +4,10 @@ import { EarThereum, EarThereum__factory } from '@app/services/contracts';
 import { BrowserProvider, Signer } from 'ethers';
 import { useMetaMask } from 'metamask-react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import latestRunJson from '@app/../../contracts/broadcast/Deploy.s.sol/31337/run-latest.json';
+import deployLocal from '@app/../../contracts/broadcast/Deploy.s.sol/31337/run-latest.json';
+import deployPolygonTest from '@app/../../contracts/broadcast/Deploy.s.sol/80001/run-latest.json';
+// import deployPolygonMain from '@app/../../contracts/broadcast/Deploy.s.sol/137/run-latest.json';
+
 export interface EarThereumContextProviderProps {
     children?: ReactNode;
 }
@@ -22,19 +25,35 @@ interface ForgeDeployment {
         transactionType: 'CREATE' | 'UNKNOWN';
         contractName: string;
         contractAddress: string;
+        hash: string;
+    }[];
+    receipts: {
+        transactionHash: string;
+        blockHash: string;
     }[];
 }
 
-function getDeployBlockHash(contractName: string): string {
-    const tx = latestRunJson.transactions.find(
-        (tx) => tx.contractName == contractName && tx.transactionType == 'CREATE'
-    );
+function getDeployBlockHash(contractName: string, deployment: ForgeDeployment): string {
+    const tx = deployment.transactions.find((tx) => tx.contractName == contractName && tx.transactionType == 'CREATE');
     if (tx) {
-        const receipt = latestRunJson.receipts.find((r) => r.transactionHash == tx?.hash);
+        const receipt = deployment.receipts.find((r) => r.transactionHash == tx?.hash);
         return receipt ? receipt.blockHash : '';
     }
 
     return '';
+}
+
+function getDeployment(chainId: number): ForgeDeployment | null {
+    switch (chainId) {
+        case 31337:
+            return deployLocal as ForgeDeployment;
+        case 80001:
+            return deployPolygonTest as ForgeDeployment;
+        // case 137:
+        //     return deployPolygonMain as ForgeDeployment;
+        default:
+            return null;
+    }
 }
 
 export const EarThereumContext = createContext<EarThereumContextStore>({} as EarThereumContextStore);
@@ -47,11 +66,39 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
     const [signer, setSigner] = useState<Signer | null>(null);
     const [uploadedTunes, setUploadedTunes] = useState<string[]>([]);
     const [uploadedSamples, setUploadedSamples] = useState<string[]>([]);
+    const [deployment, setDeployment] = useState<ForgeDeployment | null>(null);
+
+    useEffect(() => {
+        if (chainId) {
+            const chainIdNum = parseInt(chainId, 16);
+            const deployment = getDeployment(chainIdNum);
+            setDeployment(deployment);
+        }
+    }, [chainId]);
+
+    // Instantiate provider when MetaMask is connected
+    useEffect(() => {
+        if (status == 'connected' && ethereum && deployment) {
+            if (deployment) {
+                const provider = new BrowserProvider(ethereum);
+                provider
+                    .getSigner()
+                    .then((signer) => {
+                        setSigner(signer);
+                    })
+                    .catch((e) => {
+                        console.error('Unable to get signer', e);
+                    });
+            } else {
+                setSigner(null);
+            }
+        }
+    }, [status, ethereum, deployment]);
 
     // Instantiate contract when provider ready
     useEffect(() => {
         if (signer) {
-            const contractCreateTx = (latestRunJson as ForgeDeployment).transactions.find(
+            const contractCreateTx = (deployment as ForgeDeployment).transactions.find(
                 ({ contractName, transactionType }) => contractName == 'EarThereum' && transactionType == 'CREATE'
             );
 
@@ -62,13 +109,14 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
             const earThereumContract = EarThereum__factory.connect(contractCreateTx.contractAddress, signer);
             setEarThereumContract(earThereumContract);
         }
-    }, [signer]);
+    }, [signer, deployment]);
 
+    // Get the tune and sample upload event logs
     useEffect(() => {
-        if (earThereumContract) {
+        if (earThereumContract && deployment) {
             // TODO: set the block to the contract deploy block. This will get all tunes/samples from
             //       the start of this project which is fine for now but obviously won't scale
-            const blockHash = getDeployBlockHash('EarThereum');
+            const blockHash = getDeployBlockHash('EarThereum', deployment);
             console.log(`blockHash: ${blockHash}`);
 
             // Samples
@@ -94,8 +142,9 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
                 setUploadedTunes(uniqueTuneIDs);
             });
         }
-    }, [earThereumContract]);
+    }, [earThereumContract, deployment]);
 
+    // Subscribe to the events
     useEffect(() => {
         if (earThereumContract) {
             // Samples event
@@ -122,30 +171,8 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
                 earThereumContract.removeAllListeners(songUploadedEvent);
             };
         }
-
-        return;
+        return () => {};
     }, [earThereumContract, uploadedSamples, uploadedTunes]);
-
-    // Instantiate provider when MetaMask is connected
-    useEffect(() => {
-        if (status == 'connected' && ethereum) {
-            const chainIdNum = parseInt(chainId, 16);
-            // Only works on local test
-            if (chainIdNum == 31337) {
-                const provider = new BrowserProvider(ethereum);
-                provider
-                    .getSigner()
-                    .then((signer) => {
-                        setSigner(signer);
-                    })
-                    .catch((e) => {
-                        console.error('Unable to get signer', e);
-                    });
-            } else {
-                setSigner(null);
-            }
-        }
-    }, [status, ethereum, chainId]);
 
     const convertIDsToBytes4 = (sampleIDs: string[]) => {
         return sampleIDs.map((sampleID) => Buffer.from(sampleID, 'hex'));

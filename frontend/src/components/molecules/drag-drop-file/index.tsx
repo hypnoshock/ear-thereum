@@ -46,12 +46,6 @@ export const DragDropFile: FunctionComponent<DragDropFileProps> = (props: DragDr
         }
     };
 
-    const onButtonClick = () => {
-        if (inputRef.current) {
-            inputRef.current.click();
-        }
-    };
-
     return (
         <StyledDragDropFile>
             <form id="form-file-upload" onDragEnter={handleDrag} onSubmit={(e) => e.preventDefault()}>

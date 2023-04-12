@@ -176,7 +176,7 @@ export function setSampleIDsInXM(xmBytes: Uint8Array, sampleIDs: string[]): void
     // The header consists of a sub header and an extended header
     // The extended header is designed to be of variable length and starts at offset 60 (includes size variable)
     const header = xmBytes.slice(0, 60 + headerSize);
-    const numChan = new DataView(header.buffer, 68, 2).getInt16(0, true);
+    // const numChan = new DataView(header.buffer, 68, 2).getInt16(0, true);
     const numPat = new DataView(header.buffer, 70, 2).getInt16(0, true);
     const numInst = new DataView(header.buffer, 72, 2).getInt16(0, true);
 
@@ -238,8 +238,6 @@ export function setSampleIDsInXM(xmBytes: Uint8Array, sampleIDs: string[]): void
                         }
                     }
 
-                    const newSmpName = xmBytes.slice(nameOffset, nameOffset + nameLen); // Used for ID lookup
-                    // console.log(`${sampleNum} name: `, newSmpName.toString());
                     sampleNum++; // Gobal counter so not j
                 }
 
@@ -259,7 +257,7 @@ export function reconstructXM(xmBytes: Uint8Array, smpsDict: SamplesDict): Uint8
     // The header consists of a sub header and an extended header
     // The extended header is designed to be of variable length and starts at offset 60 (includes size variable)
     const header = xmBytes.slice(0, 60 + headerSize);
-    const numChan = new DataView(header.buffer, 68, 2).getInt16(0, true);
+    // const numChan = new DataView(header.buffer, 68, 2).getInt16(0, true);
     const numPat = new DataView(header.buffer, 70, 2).getInt16(0, true);
     const numInst = new DataView(header.buffer, 72, 2).getInt16(0, true);
 

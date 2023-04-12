@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
         "dev": "next dev",
-        "build": "next build",
+        "build": "next build && next export",
         "start": "next start",
         "lint": "next lint",
         "build:contracts": "npx typechain --target ethers-v6 --out-dir ./src/services/contracts ../contracts/out/EarThereum.sol/EarThereum.json"
