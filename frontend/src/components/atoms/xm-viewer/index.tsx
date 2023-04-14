@@ -8,6 +8,7 @@ import { decompressSamples, decompressXM, getXMInfo, reconstructXM, SamplesDict 
 import { useEarThereumContext } from '@app/contexts/ear-thereum-provider';
 import { getBytes } from 'ethers';
 import sanitize from 'sanitize-filename';
+import { useXMPlayerContext } from '@app/contexts/xm-player-provider';
 
 export interface XmViewerProps extends ComponentProps {
     xmID: string;
@@ -20,6 +21,7 @@ const StyledXmViewer = styled('div')`
 export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps) => {
     const { xmID, ...otherProps } = props;
     const { earThereumContract } = useEarThereumContext();
+    const { xmPlayer } = useXMPlayerContext();
     // const [loading, setIsLoading] = useState(true);
     // const [hasErrored, setHasErrored] = useState(false);
     const [xmSongData, setXMSongData] = useState<Uint8Array>();
@@ -103,11 +105,24 @@ export const XmViewer: FunctionComponent<XmViewerProps> = (props: XmViewerProps)
             downloadFile(xm, filename);
         }
     };
+    const handlePlayClick = () => {
+        if (xm) {
+            xmPlayer.load(xm.buffer);
+            xmPlayer.play();
+        }
+    };
+    const handleStopClick = () => {
+        if (xm) {
+            xmPlayer.stop();
+        }
+    };
 
     return (
         <StyledXmViewer {...otherProps}>
             <div>XM ID: {xmID}</div>
             {moduleName && <div>Name: {moduleName}</div>}
+            {smpsDict && xm && <button onClick={handlePlayClick}>play</button>}
+            {smpsDict && xm && <button onClick={handleStopClick}>stop</button>}
             {smpsDict && xm && <button onClick={handleDownloadClick}>download</button>}
         </StyledXmViewer>
     );

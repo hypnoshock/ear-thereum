@@ -293,10 +293,16 @@ export const Upload: FunctionComponent<UploadProps> = (props: UploadProps) => {
     return (
         <StyledUpload {...otherProps}>
             <h1>Upload</h1>
-            {status != 'connected' && <button onClick={handleConnectClick}>Connect</button>}
+            {status == 'connected' ? (
+                displayMainView()
+            ) : (
+                <Fragment>
+                    <p>You must be connected via MetaMask inorder to upload</p>
+                    <button onClick={handleConnectClick}>Connect</button>
+                </Fragment>
+            )}
             {account && <p>Account: {account}</p>}
             {chainId && <p>Chain: {parseInt(chainId, 16)}</p>}
-            {status == 'connected' && displayMainView()}
         </StyledUpload>
     );
 };

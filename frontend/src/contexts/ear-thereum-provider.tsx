@@ -1,7 +1,7 @@
 /** @format */
 
 import { EarThereum, EarThereum__factory } from '@app/services/contracts';
-import { BrowserProvider, Signer } from 'ethers';
+import { BrowserProvider, JsonRpcProvider, Signer } from 'ethers';
 import { useMetaMask } from 'metamask-react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import deployLocal from '@app/../../contracts/broadcast/Deploy.s.sol/31337/run-latest.json';
@@ -48,7 +48,7 @@ function getDeployment(chainId: number): ForgeDeployment | null {
         case 31337:
             return deployLocal as ForgeDeployment;
         case 80001:
-            return deployPolygonTest as ForgeDeployment;
+            return null; //deployPolygonTest as ForgeDeployment;
         // case 137:
         //     return deployPolygonMain as ForgeDeployment;
         default:
@@ -64,6 +64,8 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
     const { status, ethereum, chainId } = useMetaMask();
     const [earThereumContract, setEarThereumContract] = useState<EarThereum | null>(null);
     const [signer, setSigner] = useState<Signer | null>(null);
+    const [provider, _] = useState(null);
+    // new JsonRpcProvider('https://polygon-mumbai.infura.io/v3/a18339cedb4344d68107f53412cc9ada')
     const [uploadedTunes, setUploadedTunes] = useState<string[]>([]);
     const [uploadedSamples, setUploadedSamples] = useState<string[]>([]);
     const [deployment, setDeployment] = useState<ForgeDeployment | null>(null);
@@ -73,6 +75,12 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
             const chainIdNum = parseInt(chainId, 16);
             const deployment = getDeployment(chainIdNum);
             setDeployment(deployment);
+        } else {
+            // Default to mumbai
+            // const deployment = getDeployment(80001);
+            // setDeployment(deployment);
+
+            console.log(`No deployment for chain: ${chainId}`);
         }
     }, [chainId]);
 
@@ -80,7 +88,7 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
     useEffect(() => {
         if (status == 'connected' && ethereum && deployment) {
             if (deployment) {
-                const provider = new BrowserProvider(ethereum);
+                const provider = new BrowserProvider(ethereum); // TODO: Set provider as this
                 provider
                     .getSigner()
                     .then((signer) => {
@@ -97,8 +105,8 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
 
     // Instantiate contract when provider ready
     useEffect(() => {
-        if (signer) {
-            const contractCreateTx = (deployment as ForgeDeployment).transactions.find(
+        if (deployment && (signer || provider)) {
+            const contractCreateTx = deployment.transactions.find(
                 ({ contractName, transactionType }) => contractName == 'EarThereum' && transactionType == 'CREATE'
             );
 
@@ -106,10 +114,13 @@ export const EarThereumProvider = ({ children }: EarThereumContextProviderProps)
                 throw 'EarThereumProvider: Unable to find contract deployment transaction';
             }
 
-            const earThereumContract = EarThereum__factory.connect(contractCreateTx.contractAddress, signer);
+            const earThereumContract = EarThereum__factory.connect(
+                contractCreateTx.contractAddress,
+                signer || provider
+            );
             setEarThereumContract(earThereumContract);
         }
-    }, [signer, deployment]);
+    }, [signer, provider, deployment]);
 
     // Get the tune and sample upload event logs
     useEffect(() => {

@@ -8,6 +8,7 @@ import { TuneList } from '@app/components/organisms/tune-list';
 import { useEarThereumContext } from '@app/contexts/ear-thereum-provider';
 import { useRouter } from 'next/router';
 import { UploadedSamplesList } from '@app/components/organisms/uploaded-samples-list';
+import { useXMPlayerContext } from '@app/contexts/xm-player-provider';
 
 export interface HomeProps extends ComponentProps {}
 
@@ -22,10 +23,11 @@ export const Home: FunctionComponent<HomeProps> = (props: HomeProps) => {
 
     const handleTuneClick = (tuneID: string) => {
         router.push(`/xm?id=${tuneID}`);
+        console.log(tuneID);
     };
 
-    const handleSampleClick = (tuneID: string) => {
-        console.log(tuneID);
+    const handleSampleClick = (sampleID: string) => {
+        console.log(sampleID);
         // router.push(`/sample?id=${tuneID}`);
     };
 

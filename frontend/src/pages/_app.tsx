@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { GlobalStyles } from '@app/styles/global.styles';
 import { MetaMaskProvider } from 'metamask-react';
 import { EarThereumProvider } from '@app/contexts/ear-thereum-provider';
+import { XMPlayerProvider } from '@app/contexts/xm-player-provider';
 
 function App({ Component, pageProps }: any) {
     return (
@@ -16,9 +17,11 @@ function App({ Component, pageProps }: any) {
             </Head>
             <GlobalStyles />
             <MetaMaskProvider>
-                <EarThereumProvider>
-                    <Component {...pageProps} />
-                </EarThereumProvider>
+                <XMPlayerProvider>
+                    <EarThereumProvider>
+                        <Component {...pageProps} />
+                    </EarThereumProvider>
+                </XMPlayerProvider>
             </MetaMaskProvider>
         </Fragment>
     );
